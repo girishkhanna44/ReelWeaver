@@ -1,0 +1,54 @@
+{
+  "name": "dramaforge",
+  "version": "1.0.0",
+  "description": "AI Showrunner - Autonomous vertical short drama generation pipeline using Qwen Cloud (Track 2: AI Showrunner)",
+  "main": "index.js",
+  "scripts": {
+    "demo": "node demo.js",
+    "demo:real": "QWEN_API_KEY=$QWEN_API_KEY node demo.js",
+    "test": "node demo.js",
+    "deploy:fc": "fun deploy",
+    "deploy:docker": "docker build -t dramaforge . && docker push dramaforge",
+    "lint": "echo \"No linter configured\""
+  },
+  "keywords": [
+    "qwen",
+    "qwen-cloud",
+    "wan2.1",
+    "ai-showrunner",
+    "video-generation",
+    "short-drama",
+    "alibaba-cloud",
+    "function-compute",
+    "hackathon"
+  ],
+  "author": "DramaForge Team",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "@alicloud/fc2": "^2.6.6",
+    "ali-oss": "^6.20.0",
+    "dotenv": "^16.4.5",
+    "openai": "^4.56.0",
+    "uuid": "^9.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0"
+  },
+  "files": [
+    "agents/",
+    "config/",
+    "src/",
+    "tools/",
+    "deploy/",
+    "demo.js",
+    "index.js",
+    "ARCHITECTURE.md",
+    "README.md",
+    "LICENSE"
+  ]
+}

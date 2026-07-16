@@ -1,0 +1,172 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Transform: 'Aliyun::Serverless-2018-04-03'
+Description: DramaForge AI Showrunner Pipeline - Function Compute Deployment
+
+Parameters:
+  QwenApiKey:
+    Type: String
+    Description: Qwen Cloud API Key from DashScope
+    MinLength: 1
+    NoEcho: true
+  
+  OSSBucketName:
+    Type: String
+    Default: dramaforge-output
+    Description: OSS Bucket for video storage
+  
+  OSSRegion:
+    Type: String
+    Default: oss-cn-hangzhou
+    Description: OSS Region
+  
+  VpcId:
+    Type: String
+    Description: VPC ID for private network access
+    Default: ""
+  
+  VSwitchIds:
+    Type: CommaDelimitedList
+    Description: VSwitch IDs (comma-separated)
+    Default: ""
+  
+  SecurityGroupId:
+    Type: String
+    Description: Security Group ID
+    Default: ""
+
+Resources:
+  DramaForgeService:
+    Type: 'Aliyun::Serverless::Service'
+    Properties:
+      Description: DramaForge AI Showrunner - Multi-agent vertical drama pipeline
+      InternetAccess: true
+      VpcConfig:
+        VpcId: { Ref: VpcId }
+        VSwitchIds: { Ref: VSwitchIds }
+        SecurityGroupId: { Ref: SecurityGroupId }
+      LogConfig:
+        Project: dramaforge-logs
+        Logstore: function-logs
+      EnvironmentVariables:
+        QWEN_API_KEY: { Ref: QwenApiKey }
+        QWEN_BASE_URL: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+        OSS_BUCKET: { Ref: OSSBucketName }
+        OSS_REGION: { Ref: OSSRegion }
+        NODE_ENV: production
+
+  OrchestratorFunction:
+    Type: 'Aliyun::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20
+      CodeUri: ./
+      Timeout: 900
+      MemorySize: 2048
+      InstanceConcurrency: 10
+      EnvironmentVariables:
+        STAGE: orchestrator
+      Events:
+        - HttpTrigger:
+            Type: HTTP
+            Properties:
+              AuthType: ANONYMOUS
+              Methods: [POST, GET]
+
+  ScriptwriterFunction:
+    Type: 'Aliyun::Serverless::Function'
+    Properties:
+      Handler: agents/ScriptwriterAgent.handler
+      Runtime: nodejs20
+      CodeUri: ./
+      Timeout: 300
+      MemorySize: 1024
+      EnvironmentVariables:
+        STAGE: scriptwriting
+      Events:
+        - HttpTrigger:
+            Type: HTTP
+            Properties:
+              AuthType: ANONYMOUS
+              Methods: [POST]
+
+  StoryboardFunction:
+    Type: 'Aliyun::Serverless::Function'
+    Properties:
+      Handler: agents/StoryboardAgent.handler
+      Runtime: nodejs20
+      CodeUri: ./
+      Timeout: 300
+      MemorySize: 1024
+      EnvironmentVariables:
+        STAGE: storyboarding
+      Events:
+        - HttpTrigger:
+            Type: HTTP
+            Properties:
+              AuthType: ANONYMOUS
+              Methods: [POST]
+
+  VideoGeneratorFunction:
+    Type: 'Aliyun::Serverless::Function'
+    Properties:
+      Handler: agents/VideoGeneratorAgent.handler
+      Runtime: nodejs20
+      CodeUri: ./
+      Timeout: 600
+      MemorySize: 2048
+      EnvironmentVariables:
+        STAGE: videoGen
+      Events:
+        - HttpTrigger:
+            Type: HTTP
+            Properties:
+              AuthType: ANONYMOUS
+              Methods: [POST]
+
+  EditorFunction:
+    Type: 'Aliyun::Serverless::Function'
+    Properties:
+      Handler: agents/EditorAgent.handler
+      Runtime: nodejs20
+      CodeUri: ./
+      Timeout: 300
+      MemorySize: 1024
+      EnvironmentVariables:
+        STAGE: editing
+      Events:
+        - HttpTrigger:
+            Type: HTTP
+            Properties:
+              AuthType: ANONYMOUS
+              Methods: [POST]
+
+Outputs:
+  OrchestratorUrl:
+    Value:
+      'Fn::GetAtt': [OrchestratorFunction, HttpTriggerUrl]
+    Description: Orchestrator HTTP endpoint
+  
+  ScriptwriterUrl:
+    Value:
+      'Fn::GetAtt': [ScriptwriterFunction, HttpTriggerUrl]
+    Description: Scriptwriter HTTP endpoint
+  
+  StoryboardUrl:
+    Value:
+      'Fn::GetAtt': [StoryboardFunction, HttpTriggerUrl]
+    Description: Storyboard HTTP endpoint
+  
+  VideoGeneratorUrl:
+    Value:
+      'Fn::GetAtt': [VideoGeneratorFunction, HttpTriggerUrl]
+    Description: Video Generator HTTP endpoint
+  
+  EditorUrl:
+    Value:
+      'Fn::GetAtt': [EditorFunction, HttpTriggerUrl]
+    Description: Editor HTTP endpoint
+
+  ServiceName:
+    Value:
+      Ref: DramaForgeService
+    Description: FC Service name

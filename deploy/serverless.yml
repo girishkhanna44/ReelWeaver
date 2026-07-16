@@ -1,0 +1,112 @@
+# DramaForge - Serverless Framework Config
+# Alternative to template.yml for Serverless Framework users
+
+service: dramaforge
+
+provider:
+  name: aliyun
+  runtime: nodejs20
+  region: cn-hangzhou
+  credentials: ${env:ALIBABA_CLOUD_CREDENTIALS}
+  
+  # VPC Configuration
+  vpcConfig:
+    vpcId: ${env:VPC_ID}
+    vSwitchIds:
+      - ${env:VSWITCH_ID}
+    securityGroupId: ${env:SECURITY_GROUP_ID}
+  
+  # Environment variables for all functions
+  environment:
+    QWEN_API_KEY: ${env:QWEN_API_KEY}
+    QWEN_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
+    OSS_BUCKET: ${env:OSS_BUCKET:-dramaforge-output}
+    OSS_REGION: ${env:OSS_REGION:-oss-cn-hangzhou}
+    NODE_ENV: production
+
+package:
+  patterns:
+    - '!node_modules/**'
+    - '!.git/**'
+    - '!*.log'
+    - '!output/**'
+    - '!demo.js'
+    - '!deploy/**'
+    - '!ARCHITECTURE.md'
+
+functions:
+  orchestrator:
+    handler: index.handler
+    timeout: 900
+    memorySize: 2048
+    instanceConcurrency: 10
+    environment:
+      STAGE: orchestrator
+    events:
+      - http:
+          path: /dramaforge
+          method: post
+          authType: anonymous
+      - http:
+          path: /dramaforge
+          method: get
+          authType: anonymous
+
+  scriptwriter:
+    handler: agents/ScriptwriterAgent.handler
+    timeout: 300
+    memorySize: 1024
+    environment:
+      STAGE: scriptwriting
+    events:
+      - http:
+          path: /scriptwriter
+          method: post
+          authType: anonymous
+
+  storyboard:
+    handler: agents/StoryboardAgent.handler
+    timeout: 300
+    memorySize: 1024
+    environment:
+      STAGE: storyboarding
+    events:
+      - http:
+          path: /storyboard
+          method: post
+          authType: anonymous
+
+  videoGenerator:
+    handler: agents/VideoGeneratorAgent.handler
+    timeout: 600
+    memorySize: 2048
+    environment:
+      STAGE: videoGen
+    events:
+      - http:
+          path: /videogen
+          method: post
+          authType: anonymous
+
+  editor:
+    handler: agents/EditorAgent.handler
+    timeout: 300
+    memorySize: 1024
+    environment:
+      STAGE: editing
+    events:
+      - http:
+          path: /editor
+          method: post
+          authType: anonymous
+
+plugins:
+  - serverless-aliyun-function-compute
+
+custom:
+  aliyun:
+    serviceName: dramaforge-service
+    description: DramaForge AI Showrunner Pipeline
+    logConfig:
+      project: dramaforge-logs
+      logstore: function-logs
