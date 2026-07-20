@@ -159,6 +159,19 @@ The server has **no runtime dependencies beyond the pipeline itself** (built on 
 | **Vertical format** | 9:16 enforced at every stage |
 | **Production quality** | 720p, cinematic prompts, EDL output |
 
+## 🌐 Deploy a live link (Render)
+
+The studio is an **always-on Node server**, so live Wan 2.1 renders (which take
+minutes) run end-to-end — unlike serverless hosts that time out in seconds.
+
+1. Push to GitHub (done).
+2. **Render → New → Blueprint** → pick this repo. It reads [`render.yaml`](render.yaml)
+   and deploys `node server.js` with a `/api/health` check.
+3. Add `QWEN_API_KEY` in the service's **Environment** tab to enable **Live · Wan 2.1**
+   (leave it unset to stay in Demo mode).
+
+Full walkthrough: [deploy/render.md](deploy/render.md).
+
 ## ☁️ Alibaba Cloud Deployment
 
 ### Option 1: Function Compute (Serverless)

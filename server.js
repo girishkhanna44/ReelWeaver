@@ -204,6 +204,11 @@ const server = http.createServer(async (req, res) => {
 
       const write = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
 
+      // Heartbeat so proxies (Render, nginx, etc.) don't drop the connection
+      // during multi-minute Wan 2.1 renders that emit no events.
+      const heartbeat = setInterval(() => res.write(': keepalive\n\n'), 15000);
+      req.on('close', () => clearInterval(heartbeat));
+
       const live = raw.mode === 'live';
       const mock = !config.apiKey || config.apiKey === 'your_qwen_cloud_api_key_here';
       if (live && mock) {
@@ -217,6 +222,7 @@ const server = http.createServer(async (req, res) => {
       } catch (err) {
         write({ stage: 'error', status: 'failed', error: err.message });
       }
+      clearInterval(heartbeat);
       res.write('event: end\ndata: {}\n\n');
       return res.end();
     }

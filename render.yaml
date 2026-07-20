@@ -1,0 +1,32 @@
+# Render Blueprint for ReelWeaver — https://render.com
+# Deploys the always-on Node studio server (no serverless timeout limits),
+# so live Wan 2.1 video jobs that take minutes can run end-to-end.
+#
+# Deploy: push to GitHub, then in Render → New → Blueprint → pick this repo.
+# After the first deploy, add your QWEN_API_KEY in the service's Environment tab.
+services:
+  - type: web
+    name: reelweaver
+    runtime: node
+    plan: free
+    region: singapore          # closest region to Alibaba Cloud DashScope (cn/intl)
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Set this in the Render dashboard (Environment tab). Leave unset to run in Demo mode.
+      - key: QWEN_API_KEY
+        sync: false
+      - key: QWEN_BASE_URL
+        value: https://dashscope.aliyuncs.com/compatible-mode/v1
+      - key: DASHSCOPE_BASE_URL
+        value: https://dashscope.aliyuncs.com/api/v1
+      - key: QWEN_CHAT_MODEL
+        value: qwen-plus
+      - key: QWEN_VIDEO_MODEL
+        value: wan2.1-t2v-turbo
+      - key: WAN_SIZE
+        value: 720*1280
