@@ -158,14 +158,53 @@ const server = http.createServer(async (req, res) => {
   try {
     // ---- API routes ----
     if (urlPath === '/api/health' && method === 'GET') {
+      const key = config.apiKey || '';
+      const mock = !key || key === 'your_qwen_cloud_api_key_here';
       return sendJson(res, 200, {
         status: 'healthy',
         service: 'ReelWeaver',
         version: '1.0.0',
-        mockMode: !config.apiKey || config.apiKey === 'your_qwen_cloud_api_key_here',
+        mockMode: mock,
+        // Non-secret diagnostics to debug key/endpoint issues (no secret is exposed).
+        keyLoaded: !!key && !mock,
+        keyLooksValid: /^sk-/.test(key),
+        keyLength: key ? key.length : 0,
+        chatBaseURL: config.baseURL,
+        videoBaseURL: config.dashscopeBase,
+        chatModel: config.models.chat,
+        videoModel: config.models.video,
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
       });
+    }
+
+    // Lightweight live connectivity test — makes one tiny chat call so you can
+    // validate the API key/endpoint without running the whole pipeline.
+    if (urlPath === '/api/test-key' && method === 'GET') {
+      const key = config.apiKey || '';
+      if (!key || key === 'your_qwen_cloud_api_key_here') {
+        return sendJson(res, 200, { ok: false, reason: 'no-key', message: 'No QWEN_API_KEY set — the studio is in mock/demo mode.' });
+      }
+      try {
+        const { OpenAI } = require('openai');
+        const client = new OpenAI({ apiKey: key, baseURL: config.baseURL });
+        await client.chat.completions.create({
+          model: config.models.chat,
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 1,
+        });
+        return sendJson(res, 200, { ok: true, chatModel: config.models.chat, chatBaseURL: config.baseURL, message: 'API key works against this endpoint.' });
+      } catch (err) {
+        return sendJson(res, 200, {
+          ok: false,
+          status: err.status || null,
+          chatBaseURL: config.baseURL,
+          error: err.message,
+          hint: /401|api key|apikey/i.test(String(err.message))
+            ? 'Key rejected. Most likely the key is for a different region — try the -intl endpoints (see .env.example), or double-check the key value.'
+            : 'Check the endpoint, model access, and account status.',
+        });
+      }
     }
 
     if (urlPath === '/api/budget' && method === 'GET') {

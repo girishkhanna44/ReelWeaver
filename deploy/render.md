@@ -29,6 +29,19 @@ This is the easiest way to get a live, shareable link with real Qwen Cloud video
   and the server sends SSE heartbeats so the connection stays open.
 - Health check: `GET /api/health` (returns `mockMode: true/false`).
 
+## Troubleshooting: `401 Incorrect API key`
+This means Qwen Cloud rejected the key. Checklist:
+1. **Region mismatch (most common).** Model Studio has two regions with separate keys.
+   If your key was created in the **International** console, set:
+   - `QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1`
+   - `DASHSCOPE_BASE_URL=https://dashscope-intl.aliyuncs.com/api/v1`
+   (Mainland-China keys use the `dashscope.aliyuncs.com` hosts.)
+2. **Key value.** Copy it fresh from the console — no spaces/quotes. It starts with `sk-`.
+3. **Activate Model Studio** and confirm `qwen-plus` / `wan2.1-t2v-turbo` are enabled for your account.
+4. **Verify quickly:** open `https://<your-app>/api/test-key` — it makes one tiny call and
+   tells you `ok: true/false` plus the exact error and a hint. `/api/health` shows which
+   endpoint and models are configured (no secret is exposed).
+
 ## Manual deploy (without the Blueprint)
 Render → **New → Web Service** → pick the repo, then set:
 - **Build command:** `npm install`

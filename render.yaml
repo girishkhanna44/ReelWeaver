@@ -20,6 +20,8 @@ services:
       # Set this in the Render dashboard (Environment tab). Leave unset to run in Demo mode.
       - key: QWEN_API_KEY
         sync: false
+      # If your API key is an INTERNATIONAL-region key, change these two hosts to
+      # dashscope-intl.aliyuncs.com (otherwise you'll get 401 Incorrect API key).
       - key: QWEN_BASE_URL
         value: https://dashscope.aliyuncs.com/compatible-mode/v1
       - key: DASHSCOPE_BASE_URL
