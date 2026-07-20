@@ -52,7 +52,7 @@ Return JSON array of EditDecision objects.`;
       temperature: 0.5 
     });
 
-    return JSON.parse(result.content);
+    return this.parseJsonResponse(result.content);
   }
 
   // In production, this would use FFmpeg or similar to actually render

@@ -6,7 +6,7 @@ class AliyunOSS {
       region: config.region || process.env.OSS_REGION || 'oss-cn-hangzhou',
       accessKeyId: config.accessKeyId || process.env.OSS_ACCESS_KEY_ID,
       accessKeySecret: config.accessKeySecret || process.env.OSS_ACCESS_KEY_SECRET,
-      bucket: config.bucket || process.env.OSS_BUCKET || 'dramaforge-output',
+      bucket: config.bucket || process.env.OSS_BUCKET || 'reelweaver-output',
       secure: true,
       timeout: 120000,
     });

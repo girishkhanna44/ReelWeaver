@@ -5,7 +5,7 @@ const EditorAgent = require('./EditorAgent');
 const config = require('../config/qwen');
 const { v4: uuidv4 } = require('uuid');
 
-class DramaForgeOrchestrator {
+class ReelWeaverOrchestrator {
   constructor(options = {}) {
     this.tokenBudget = config.tokenBudget;
     this.scriptwriter = new ScriptwriterAgent(this.tokenBudget.scriptwriting);
@@ -14,6 +14,20 @@ class DramaForgeOrchestrator {
     this.editor = new EditorAgent(this.tokenBudget.editing);
     this.projectId = options.projectId || uuidv4();
     this.totalTokensUsed = 0;
+    // Optional progress hook: (event) => void. Used by the UI server to stream
+    // live stage-by-stage updates over Server-Sent Events.
+    this.onProgress = typeof options.onProgress === 'function' ? options.onProgress : () => {};
+  }
+
+  emit(stage, status, data = {}) {
+    this.onProgress({
+      stage,
+      status,
+      projectId: this.projectId,
+      tokensUsed: this.totalTokensUsed,
+      tokenBudget: this.tokenBudget.total,
+      ...data,
+    });
   }
 
   getTokenBudget() {
@@ -31,35 +45,46 @@ class DramaForgeOrchestrator {
   }
 
   async run(brief) {
-    console.log(`[DramaForge] Starting project ${this.projectId}`);
-    console.log(`[DramaForge] Token budget: ${this.tokenBudget.total}`);
+    console.log(`[ReelWeaver] Starting project ${this.projectId}`);
+    console.log(`[ReelWeaver] Token budget: ${this.tokenBudget.total}`);
+    this.emit('init', 'started', { title: brief.title, budget: this.tokenBudget, live: true });
 
     // Stage 1: Scriptwriting
     console.log('[Stage 1/4] Writing script...');
+    this.emit('scriptwriting', 'running');
     const script = await this.scriptwriter.writeScript(brief);
     this.totalTokensUsed += script.tokenUsage;
     console.log(`[Stage 1] Script complete: ${script.scenes.length} scenes, ${script.tokenUsage} tokens`);
+    this.emit('scriptwriting', 'done', { script, tokens: script.tokenUsage });
 
     // Stage 2: Storyboarding
     console.log('[Stage 2/4] Creating storyboard...');
+    this.emit('storyboarding', 'running');
     const storyboard = await this.storyboarder.createStoryboard(script);
     this.totalTokensUsed += storyboard.totalPromptTokens;
     console.log(`[Stage 2] Storyboard complete: ${storyboard.totalFrames} frames, ${storyboard.totalPromptTokens} tokens`);
+    this.emit('storyboarding', 'done', { storyboard, tokens: storyboard.totalPromptTokens });
 
-    // Stage 3: Video Generation
+    // Stage 3: Video Generation (real Wan 2.1 calls when a live API key is set)
     console.log('[Stage 3/4] Generating videos...');
-    const videoResult = await this.videoGen.generateAllVideos(storyboard);
+    this.emit('videoGen', 'running');
+    const videoResult = await this.videoGen.generateAllVideos(storyboard, (p) =>
+      this.emit('videoGen', 'progress', { clip: p })
+    );
     this.totalTokensUsed += videoResult.totalTokenCost;
     const completedClips = videoResult.clips.filter(c => c.status === 'completed').length;
     console.log(`[Stage 3] Video gen complete: ${completedClips}/${videoResult.clips.length} clips, ${videoResult.totalTokenCost} tokens`);
+    this.emit('videoGen', 'done', { videoResult, tokens: videoResult.totalTokenCost });
 
     // Stage 4: Editing
     console.log('[Stage 4/4] Editing final video...');
+    this.emit('editing', 'running');
     const editPlan = await this.editor.createEditPlan(videoResult, script);
     this.totalTokensUsed += this.editor.getTokenUsage();
-    
+
     const finalVideo = await this.editor.renderFinalVideo(editPlan, videoResult.clips, this.projectId);
     console.log(`[Stage 4] Final video rendered: ${finalVideo.duration}s`);
+    this.emit('editing', 'done', { editPlan, finalVideo, tokens: this.editor.getTokenUsage() });
 
     // Final output
     const output = {
@@ -78,44 +103,59 @@ class DramaForgeOrchestrator {
         videoTokens: videoResult.totalTokenCost,
         editTokens: this.editor.getTokenUsage(),
       },
+      // Full artifacts so the studio can render script/storyboard/EDL in live mode too.
+      script,
+      storyboard,
+      videoResult,
+      editPlan,
     };
 
-    console.log(`[DramaForge] Project ${this.projectId} complete!`);
-    console.log(`[DramaForge] Total tokens: ${this.totalTokensUsed}/${this.tokenBudget.total}`);
+    console.log(`[ReelWeaver] Project ${this.projectId} complete!`);
+    console.log(`[ReelWeaver] Total tokens: ${this.totalTokensUsed}/${this.tokenBudget.total}`);
+    this.emit('complete', 'done', { output });
 
     return output;
   }
 
   // For demo/testing without actual video generation
   async runDemo(brief) {
-    console.log(`[DramaForge DEMO] Starting project ${this.projectId}`);
-    
+    console.log(`[ReelWeaver DEMO] Starting project ${this.projectId}`);
+    this.emit('init', 'started', { title: brief.title, budget: this.tokenBudget });
+
     // Stage 1: Script
     console.log('[Stage 1/4] Writing script...');
+    this.emit('scriptwriting', 'running');
     const script = await this.scriptwriter.writeScript(brief);
     this.totalTokensUsed += script.tokenUsage;
+    this.emit('scriptwriting', 'done', { script, tokens: script.tokenUsage });
 
     // Stage 2: Storyboard
     console.log('[Stage 2/4] Creating storyboard...');
+    this.emit('storyboarding', 'running');
     const storyboard = await this.storyboarder.createStoryboard(script);
     this.totalTokensUsed += storyboard.totalPromptTokens;
+    this.emit('storyboarding', 'done', { storyboard, tokens: storyboard.totalPromptTokens });
 
     // Stage 3: Video Gen (simulated)
     console.log('[Stage 3/4] Generating videos (simulated)...');
+    this.emit('videoGen', 'running');
     const videoResult = await this.simulateVideoGeneration(storyboard);
     this.totalTokensUsed += videoResult.totalTokenCost;
+    this.emit('videoGen', 'done', { videoResult, tokens: videoResult.totalTokenCost });
 
     // Stage 4: Edit (simulated)
     console.log('[Stage 4/4] Editing (simulated)...');
+    this.emit('editing', 'running');
     const editPlan = await this.editor.createEditPlan(videoResult, script);
     this.totalTokensUsed += this.editor.getTokenUsage();
-    
+
     const finalVideo = {
       localPath: `./output/${this.projectId}_demo_final.mp4`,
       videoUrl: `https://qwen-cloud.example.com/outputs/${this.projectId}_demo_final.mp4`,
       duration: script.totalEstimatedDuration,
       resolution: '720p (1280x720, 9:16)',
     };
+    this.emit('editing', 'done', { editPlan, finalVideo, tokens: this.editor.getTokenUsage() });
 
     const output = {
       projectId: this.projectId,
@@ -140,7 +180,8 @@ class DramaForgeOrchestrator {
       editPlan,
     };
 
-    console.log(`[DramaForge DEMO] Complete! Tokens: ${this.totalTokensUsed}/${this.tokenBudget.total}`);
+    console.log(`[ReelWeaver DEMO] Complete! Tokens: ${this.totalTokensUsed}/${this.tokenBudget.total}`);
+    this.emit('complete', 'done', { output });
     return output;
   }
 
@@ -166,7 +207,7 @@ class DramaForgeOrchestrator {
   }
 }
 
-module.exports = DramaForgeOrchestrator;
+module.exports = ReelWeaverOrchestrator;
 
 /**
  * Function Compute handler for Orchestrator Agent
@@ -177,7 +218,7 @@ module.exports = DramaForgeOrchestrator;
 module.exports.handler = async (event, context, callback) => {
   const requestId = context.requestId;
   console.log(`[Orchestrator] Request ${requestId} started`);
-  
+
   try {
     let brief;
     if (event.body) {
@@ -194,12 +235,12 @@ module.exports.handler = async (event, context, callback) => {
       };
     }
 
-    const orchestrator = new DramaForgeOrchestrator({ projectId: requestId });
-    
+    const orchestrator = new ReelWeaverOrchestrator({ projectId: requestId });
+
     // Check if demo mode requested
     const mode = brief.mode || (brief.demo ? 'demo' : 'production');
     let result;
-    
+
     if (mode === 'demo') {
       result = await orchestrator.runDemo(brief);
     } else {

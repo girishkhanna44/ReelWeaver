@@ -1,6 +1,6 @@
-# DramaForge Alibaba Cloud Deployment Guide
+# ReelWeaver Alibaba Cloud Deployment Guide
 
-This guide shows how to deploy DramaForge on Alibaba Cloud for the hackathon submission.
+This guide shows how to deploy ReelWeaver on Alibaba Cloud for the hackathon submission.
 
 ## Architecture Overview
 
@@ -42,15 +42,15 @@ Deploy each agent as a separate FC function for scalability.
 
 ```bash
 # Create deployment package
-cd DramaForge
-zip -r dramaforge.zip . -x "node_modules/*" ".git/*" "*.log" "output/*" "demo.js"
+cd ReelWeaver
+zip -r reelweaver.zip . -x "node_modules/*" ".git/*" "*.log" "output/*" "demo.js"
 ```
 
 #### 2. Create FC Service & Functions
 
 ```bash
 # Using fun CLI
-fun init -n dramaforge-service
+fun init -n reelweaver-service
 
 # Configure template.yml (see below)
 fun deploy
@@ -62,17 +62,17 @@ fun deploy
 ROSTemplateFormatVersion: '2015-09-01'
 Transform: 'Aliyun::Serverless-2018-04-03'
 Resources:
-  DramaForgeService:
+  ReelWeaverService:
     Type: 'Aliyun::Serverless::Service'
     Properties:
-      Description: DramaForge AI Showrunner Pipeline
+      Description: ReelWeaver AI Showrunner Pipeline
       VpcConfig:
         VpcId: vpc-xxxxx
         VSwitchIds: [vsw-xxxxx]
         SecurityGroupId: sg-xxxxx
       InternetAccess: true
       LogConfig:
-        Project: dramaforge-logs
+        Project: reelweaver-logs
         Logstore: function-logs
 
   ScriptwriterFunction:
@@ -80,7 +80,7 @@ Resources:
     Properties:
       Handler: agents/ScriptwriterAgent.handler
       Runtime: nodejs20
-      CodeUri: ./dramaforge.zip
+      CodeUri: ./reelweaver.zip
       Timeout: 300
       MemorySize: 1024
       EnvironmentVariables:
@@ -99,7 +99,7 @@ Resources:
     Properties:
       Handler: agents/StoryboardAgent.handler
       Runtime: nodejs20
-      CodeUri: ./dramaforge.zip
+      CodeUri: ./reelweaver.zip
       Timeout: 300
       MemorySize: 1024
       EnvironmentVariables:
@@ -111,12 +111,12 @@ Resources:
     Properties:
       Handler: agents/VideoGeneratorAgent.handler
       Runtime: nodejs20
-      CodeUri: ./dramaforge.zip
+      CodeUri: ./reelweaver.zip
       Timeout: 600
       MemorySize: 2048
       EnvironmentVariables:
         QWEN_API_KEY: ${QWEN_API_KEY}
-        OSS_BUCKET: dramaforge-output
+        OSS_BUCKET: reelweaver-output
         OSS_REGION: oss-cn-hangzhou
         STAGE: videoGen
 
@@ -125,7 +125,7 @@ Resources:
     Properties:
       Handler: agents/EditorAgent.handler
       Runtime: nodejs20
-      CodeUri: ./dramaforge.zip
+      CodeUri: ./reelweaver.zip
       Timeout: 300
       MemorySize: 1024
       EnvironmentVariables:
@@ -135,14 +135,14 @@ Resources:
   OrchestratorFunction:
     Type: 'Aliyun::Serverless::Function'
     Properties:
-      Handler: agents/DramaForgeOrchestrator.handler
+      Handler: agents/ReelWeaverOrchestrator.handler
       Runtime: nodejs20
-      CodeUri: ./dramaforge.zip
+      CodeUri: ./reelweaver.zip
       Timeout: 900
       MemorySize: 2048
       EnvironmentVariables:
         QWEN_API_KEY: ${QWEN_API_KEY}
-        OSS_BUCKET: dramaforge-output
+        OSS_BUCKET: reelweaver-output
         STAGE: orchestrator
 ```
 
@@ -179,10 +179,10 @@ CMD ["node", "server.js"]
 
 ```bash
 # Build
-docker build -t registry.cn-hangzhou.aliyuncs.com/your-namespace/dramaforge:latest .
+docker build -t registry.cn-hangzhou.aliyuncs.com/your-namespace/reelweaver:latest .
 
 # Push
-docker push registry.cn-hangzhou.aliyuncs.com/your-namespace/dramaforge:latest
+docker push registry.cn-hangzhou.aliyuncs.com/your-namespace/reelweaver:latest
 ```
 
 #### Deploy to ECS/ACK
@@ -199,8 +199,8 @@ Use the Alibaba Cloud console or Terraform to create:
 
 ```bash
 # Using aliyun CLI
-aliyun oss mb oss://dramaforge-output --region oss-cn-hangzhou
-aliyun oss bucket-acl --bucket dramaforge-output --acl public-read
+aliyun oss mb oss://reelweaver-output --region oss-cn-hangzhou
+aliyun oss bucket-acl --bucket reelweaver-output --acl public-read
 ```
 
 ### 2. Configure CORS
@@ -220,7 +220,7 @@ aliyun oss bucket-acl --bucket dramaforge-output --acl public-read
 ```
 
 ```bash
-aliyun oss cors --bucket dramaforge-output --cors-file cors.xml
+aliyun oss cors --bucket reelweaver-output --cors-file cors.xml
 ```
 
 ### 3. Set Lifecycle (Optional - Auto-cleanup)
@@ -250,7 +250,7 @@ QWEN_VIDEO_MODEL=wan2.1-t2v-turbo
 
 # OSS
 OSS_REGION=oss-cn-hangzhou
-OSS_BUCKET=dramaforge-output
+OSS_BUCKET=reelweaver-output
 OSS_ACCESS_KEY_ID=LTAIxxxxx
 OSS_ACCESS_KEY_SECRET=xxxxx
 
@@ -272,7 +272,7 @@ LOG_LEVEL=info
 
 ```bash
 # Function Compute
-curl -X POST https://your-fc-endpoint/dramaforge \
+curl -X POST https://your-fc-endpoint/reelweaver \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Test Drama",
@@ -290,19 +290,19 @@ curl -X POST https://your-fc-endpoint/dramaforge \
 
 ```bash
 # Function Compute logs
-fun logs dramaforge-service/OrchestratorFunction
+fun logs reelweaver-service/OrchestratorFunction
 
-# Or in console: FC > Services > dramaforge-service > Logs
+# Or in console: FC > Services > reelweaver-service > Logs
 ```
 
 ### 3. Verify Output in OSS
 
 ```bash
 # List generated videos
-aliyun oss ls oss://dramaforge-output/outputs/
+aliyun oss ls oss://reelweaver-output/outputs/
 
 # Download final video
-aliyun oss cp oss://dramaforge-output/outputs/projectId_final.mp4 ./final.mp4
+aliyun oss cp oss://reelweaver-output/outputs/projectId_final.mp4 ./final.mp4
 ```
 
 ## Cost Estimation (Hackathon Scale)
@@ -334,7 +334,7 @@ Include in your repo:
    - OSS Bucket with generated videos
    - DashScope API call logs
    - VPC/Security Group config
-2. Code reference: `agents/DramaForgeOrchestrator.js` showing Alibaba Cloud SDK usage
+2. Code reference: `agents/ReelWeaverOrchestrator.js` showing Alibaba Cloud SDK usage
 3. Architecture diagram (this guide's Mermaid charts)
 
 ## Troubleshooting
@@ -355,10 +355,10 @@ Include in your repo:
 
 set -e
 
-SERVICE_NAME="dramaforge-service"
+SERVICE_NAME="reelweaver-service"
 REGION="cn-hangzhou"
 
-echo "🚀 Deploying DramaForge to Alibaba Cloud..."
+echo "🚀 Deploying ReelWeaver to Alibaba Cloud..."
 
 # 1. Install fun if needed
 if ! command -v fun &> /dev/null; then
@@ -369,7 +369,7 @@ fi
 fun config --region $REGION --access-key-id $ALIBABA_CLOUD_ACCESS_KEY_ID --access-key-secret $ALIBABA_CLOUD_ACCESS_KEY_SECRET
 
 # 3. Package
-zip -r dramaforge.zip . -x "node_modules/*" ".git/*" "*.log" "output/*" "demo.js" "deploy/*"
+zip -r reelweaver.zip . -x "node_modules/*" ".git/*" "*.log" "output/*" "demo.js" "deploy/*"
 
 # 4. Deploy
 fun deploy --service $SERVICE_NAME

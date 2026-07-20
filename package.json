@@ -1,14 +1,17 @@
 {
-  "name": "dramaforge",
+  "name": "reelweaver",
   "version": "1.0.0",
-  "description": "AI Showrunner - Autonomous vertical short drama generation pipeline using Qwen Cloud (Track 2: AI Showrunner)",
+  "description": "ReelWeaver - AI Showrunner that weaves a creative brief into a complete vertical short drama using Qwen Cloud (Track 2: AI Showrunner)",
   "main": "index.js",
   "scripts": {
     "demo": "node demo.js",
     "demo:real": "QWEN_API_KEY=$QWEN_API_KEY node demo.js",
+    "demo:video": "node demo-video.js",
+    "ui": "node server.js",
+    "start": "node server.js",
     "test": "node demo.js",
     "deploy:fc": "fun deploy",
-    "deploy:docker": "docker build -t dramaforge . && docker push dramaforge",
+    "deploy:docker": "docker build -t reelweaver . && docker push reelweaver",
     "lint": "echo \"No linter configured\""
   },
   "keywords": [
@@ -22,7 +25,7 @@
     "function-compute",
     "hackathon"
   ],
-  "author": "DramaForge Team",
+  "author": "ReelWeaver Team",
   "license": "MIT",
   "type": "commonjs",
   "engines": {
@@ -45,10 +48,14 @@
     "src/",
     "tools/",
     "deploy/",
+    "ui/",
+    "server.js",
     "demo.js",
+    "demo-video.js",
     "index.js",
     "ARCHITECTURE.md",
     "README.md",
+    "SUMMARY.md",
     "LICENSE"
   ]
 }

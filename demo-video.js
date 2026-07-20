@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * DramaForge Demo Script for Video Recording
- * 
+ * ReelWeaver Demo Script for Video Recording
+ *
  * Run this script and record your screen for the 3-minute demo video.
  * It prints beautiful formatted output showing each stage of the pipeline.
  */
 
 require('dotenv').config();
-const DramaForgeOrchestrator = require('./agents/DramaForgeOrchestrator');
+const ReelWeaverOrchestrator = require('./agents/ReelWeaverOrchestrator');
 
 const COLORS = {
   reset: '\x1b[0m',
@@ -65,16 +65,14 @@ async function runDemo() {
   // Clear screen
   console.clear();
 
-  // Title screen
+  // Title screen — ReelWeaver wordmark
   console.log(`
 ${c('bgBlue', ' '.repeat(60))}
-${c('bgBlue', '  ██████╗ ██████╗ ██████╗ ███████╗██╗     ██╗    ██████╗  ')}${c('reset')}
-${c('bgBlue', '  ██╔══██╗██╔══██╗██╔══██╗██╔════╝██║     ██║    ╚════██╗ ')}${c('reset')}
-${c('bgBlue', '  ██████╔╝██████╔╝██████╔╝█████╗  ██║     ██║     █████╔╝ ')}${c('reset')}
-${c('bgBlue', '  ██╔══██╗██╔═══╝ ██╔══██╗██╔══╝  ██║     ██║     ╚═══██╗ ')}${c('reset')}
-${c('bgBlue', '  ██║  ██║██║     ██║  ██║███████╗███████╗██║    ██████╔╝ ')}${c('reset')}
-${c('bgBlue', '  ╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝    ╚═════╝  ')}${c('reset')}
+${c('bgBlue', '   ┏━┓┏━╸┏━╸╻  ╻ ╻┏━╸┏━┓╻ ╻┏━╸┏━┓                          ')}${c('reset')}
+${c('bgBlue', '   ┣┳┛┣╸ ┣╸ ┃  ┃╻┃┣╸ ┣━┫┃┏┛┣╸ ┣┳┛                          ')}${c('reset')}
+${c('bgBlue', '   ╹┗╸┗━╸┗━╸┗━╸┗┻┛┗━╸╹ ╹┗┛ ┗━╸╹┗╸                          ')}${c('reset')}
 ${c('bgBlue', ' '.repeat(60))}
+${c('bgBlue', '     R E E L W E A V E R                                    ')}${c('reset')}
 ${c('bgBlue', '           AI SHOWRUNNER • Track 2: AI Showrunner           ')}${c('reset')}
 ${c('bgBlue', '           Global AI Hackathon with Qwen Cloud              ')}${c('reset')}
 ${c('bgBlue', ' '.repeat(60))}${c('reset')}
@@ -123,9 +121,9 @@ ${c('bgBlue', ' '.repeat(60))}${c('reset')}
   await sleep(1500);
 
   // Initialize Orchestrator
-  header('🎭 DRAMAFORGE PIPELINE INITIALIZATION');
-  
-  const orchestrator = new DramaForgeOrchestrator();
+  header('🎭 REELWEAVER PIPELINE INITIALIZATION');
+
+  const orchestrator = new ReelWeaverOrchestrator();
   info('Project ID', orchestrator.projectId);
   info('Token Budget', `${orchestrator.tokenBudget.total.toLocaleString()} tokens`);
   info('Stages', 'Scriptwriter → Storyboarder → VideoGen → Editor');

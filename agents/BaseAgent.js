@@ -125,6 +125,31 @@ class BaseAgent {
     };
   }
 
+  /**
+   * Parse a JSON response from an LLM, tolerating markdown code fences and
+   * leading/trailing prose that models occasionally add around JSON output.
+   */
+  parseJsonResponse(content) {
+    if (content && typeof content === 'object') return content;
+    let text = String(content || '').trim();
+
+    // Strip ```json ... ``` or ``` ... ``` fences.
+    const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fenced) text = fenced[1].trim();
+
+    try {
+      return JSON.parse(text);
+    } catch (_) {
+      // Fall back to the first balanced JSON object/array in the text.
+      const start = text.search(/[[{]/);
+      const end = Math.max(text.lastIndexOf(']'), text.lastIndexOf('}'));
+      if (start !== -1 && end > start) {
+        return JSON.parse(text.slice(start, end + 1));
+      }
+      throw new Error(`${this.name}: could not parse JSON from model response`);
+    }
+  }
+
   getTokenUsage() {
     return this.tokenUsage;
   }

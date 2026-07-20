@@ -1,11 +1,11 @@
 /**
- * DramaForge - Function Compute Entry Point
- * 
+ * ReelWeaver - Function Compute Entry Point
+ *
  * This is the main handler for Alibaba Cloud Function Compute.
  * It orchestrates the full AI Showrunner pipeline.
  */
 
-const DramaForgeOrchestrator = require('./agents/DramaForgeOrchestrator');
+const ReelWeaverOrchestrator = require('./agents/ReelWeaverOrchestrator');
 const AliyunOSS = require('./tools/aliyun-oss');
 
 /**
@@ -18,7 +18,7 @@ exports.handler = async (event, context, callback) => {
   const startTime = Date.now();
   const requestId = context.requestId;
   
-  console.log(`[DramaForge] Request ${requestId} started`);
+  console.log(`[ReelWeaver] Request ${requestId} started`);
 
   try {
     // Parse request body
@@ -54,10 +54,10 @@ exports.handler = async (event, context, callback) => {
       };
     }
 
-    console.log(`[DramaForge] Processing: ${brief.title} (${brief.durationSeconds || 90}s)`);
+    console.log(`[ReelWeaver] Processing: ${brief.title} (${brief.durationSeconds || 90}s)`);
 
     // Initialize orchestrator with request ID as project ID
-    const orchestrator = new DramaForgeOrchestrator({
+    const orchestrator = new ReelWeaverOrchestrator({
       projectId: requestId,
     });
 
@@ -71,9 +71,9 @@ exports.handler = async (event, context, callback) => {
         const uploadResult = await oss.uploadVideo(result.localPath, result.projectId);
         result.videoUrl = uploadResult.url;
         result.ossKey = uploadResult.key;
-        console.log(`[DramaForge] Video uploaded to OSS: ${uploadResult.key}`);
+        console.log(`[ReelWeaver] Video uploaded to OSS: ${uploadResult.key}`);
       } catch (ossError) {
-        console.error('[DramaForge] OSS upload failed:', ossError.message);
+        console.error('[ReelWeaver] OSS upload failed:', ossError.message);
         result.ossError = ossError.message;
       }
     }
@@ -82,8 +82,8 @@ exports.handler = async (event, context, callback) => {
     const processingTime = Date.now() - startTime;
     result.processingTimeMs = processingTime;
 
-    console.log(`[DramaForge] Request ${requestId} completed in ${processingTime}ms`);
-    console.log(`[DramaForge] Tokens used: ${result.totalTokenUsage}/${result.budgetUsed}`);
+    console.log(`[ReelWeaver] Request ${requestId} completed in ${processingTime}ms`);
+    console.log(`[ReelWeaver] Tokens used: ${result.totalTokenUsage}/${result.budgetUsed}`);
 
     // Return success response
     return {
@@ -112,7 +112,7 @@ exports.handler = async (event, context, callback) => {
 
   } catch (error) {
     const processingTime = Date.now() - startTime;
-    console.error(`[DramaForge] Request ${requestId} failed after ${processingTime}ms:`, error);
+    console.error(`[ReelWeaver] Request ${requestId} failed after ${processingTime}ms:`, error);
 
     return {
       statusCode: 500,
@@ -140,7 +140,7 @@ exports.health = async (event, context, callback) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       status: 'healthy',
-      service: 'DramaForge',
+      service: 'ReelWeaver',
       version: '1.0.0',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),

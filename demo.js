@@ -1,5 +1,5 @@
 require('dotenv').config();
-const DramaForgeOrchestrator = require('./agents/DramaForgeOrchestrator');
+const ReelWeaverOrchestrator = require('./agents/ReelWeaverOrchestrator');
 
 async function main() {
   const brief = {
@@ -28,10 +28,10 @@ async function main() {
     ],
   };
 
-  const orchestrator = new DramaForgeOrchestrator();
+  const orchestrator = new ReelWeaverOrchestrator();
   const result = await orchestrator.runDemo(brief);
-  
-  console.log('\n=== DRAMAFORGE DEMO COMPLETE ===');
+
+  console.log('\n=== REELWEAVER DEMO COMPLETE ===');
   console.log(`Project: ${result.projectId}`);
   console.log(`Title: ${result.title}`);
   console.log(`Duration: ${result.duration}s`);

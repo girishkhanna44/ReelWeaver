@@ -1,4 +1,4 @@
-# DramaForge Architecture
+# ReelWeaver Architecture
 
 ## System Overview
 
@@ -8,7 +8,7 @@ flowchart TB
         Brief[("Creative Brief\nTitle, Genre, Tone, Logline\nCharacters, Key Beats")]
     end
 
-    subgraph Orchestrator["🎭 DramaForge Orchestrator"]
+    subgraph Orchestrator["🎭 ReelWeaver Orchestrator"]
         Orch[/"Token Budget Manager\n(30K total budget)"/]
     end
 
@@ -129,7 +129,7 @@ sequenceDiagram
 ```mermaid
 flowchart LR
     subgraph Local["💻 Local Development"]
-        Dev[Node.js App\nDramaForge]
+        Dev[Node.js App\nReelWeaver]
     end
 
     subgraph Cloud["☁️ Alibaba Cloud"]
@@ -167,14 +167,14 @@ node demo.js
 ## Project Structure
 
 ```
-DramaForge/
+ReelWeaver/
 ├── agents/
 │   ├── BaseAgent.js           # Shared LLM client + mock mode
 │   ├── ScriptwriterAgent.js   # Stage 1: Creative writing
 │   ├── StoryboardAgent.js     # Stage 2: Frame breakdown
 │   ├── VideoGeneratorAgent.js # Stage 3: Wan 2.1 prompts + gen
 │   ├── EditorAgent.js         # Stage 4: EDL + rendering
-│   └── DramaForgeOrchestrator.js  # Pipeline coordinator
+│   └── ReelWeaverOrchestrator.js  # Pipeline coordinator
 ├── config/
 │   └── qwen.js                # Model config, token budgets
 ├── src/

@@ -1,0 +1,758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ReelWeaver — AI Showrunner Studio</title>
+<meta name="description" content="ReelWeaver weaves a creative brief into a complete vertical short drama with a multi-agent Qwen Cloud pipeline." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ctext y='26' font-size='26'%3E%F0%9F%8E%AC%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #06070b;
+    --panel: rgba(255, 255, 255, 0.045);
+    --panel-strong: rgba(255, 255, 255, 0.07);
+    --border: rgba(255, 255, 255, 0.09);
+    --border-bright: rgba(255, 255, 255, 0.16);
+    --text: #eef1f8;
+    --muted: #99a0b3;
+    --faint: #656b7d;
+    --violet: #8b6dff;
+    --cyan: #35e0e8;
+    --amber: #ffc159;
+    --green: #4ade80;
+    --red: #ff6b7d;
+    --radius: 16px;
+    --shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.75);
+    --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  /* Ambient glows */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(60vw 60vw at 12% -10%, rgba(139, 109, 255, 0.20), transparent 60%),
+      radial-gradient(55vw 55vw at 100% 0%, rgba(53, 224, 232, 0.14), transparent 55%),
+      radial-gradient(50vw 40vw at 50% 120%, rgba(139, 109, 255, 0.10), transparent 60%);
+    z-index: -2;
+    pointer-events: none;
+  }
+  /* Subtle woven grid */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(circle at 50% 30%, black, transparent 85%);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  a { color: var(--cyan); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .glass {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(18px) saturate(120%);
+    -webkit-backdrop-filter: blur(18px) saturate(120%);
+    box-shadow: var(--shadow);
+  }
+
+  /* ---------- Header ---------- */
+  header.top {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px clamp(16px, 4vw, 40px);
+    background: linear-gradient(180deg, rgba(6, 7, 11, 0.86), rgba(6, 7, 11, 0.4));
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: 12px;
+    display: grid; place-items: center;
+    background: linear-gradient(140deg, rgba(139, 109, 255, 0.9), rgba(53, 224, 232, 0.85));
+    box-shadow: 0 8px 24px -8px rgba(139, 109, 255, 0.7);
+  }
+  .logo svg { width: 24px; height: 24px; }
+  .wordmark { display: flex; flex-direction: column; line-height: 1.05; }
+  .wordmark b {
+    font-size: 19px; letter-spacing: -0.02em; font-weight: 700;
+    background: linear-gradient(100deg, #fff 10%, var(--violet) 60%, var(--cyan));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .wordmark span { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .spacer { flex: 1; }
+  .badge {
+    font-size: 11.5px; color: var(--muted);
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--panel-strong);
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  }
+  .badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); }
+  .badge.mock .dot { background: var(--amber); box-shadow: 0 0 10px var(--amber); }
+  .kbd {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    border: 1px solid var(--border); border-bottom-width: 2px;
+    border-radius: 6px; padding: 3px 7px; background: rgba(255,255,255,0.03);
+  }
+  .ghost-btn {
+    background: var(--panel-strong); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 14px; border-radius: 10px; font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px; transition: 0.15s;
+  }
+  .ghost-btn:hover { border-color: var(--border-bright); background: rgba(255,255,255,0.09); }
+
+  /* ---------- Layout ---------- */
+  main {
+    max-width: 1320px; margin: 0 auto;
+    padding: clamp(18px, 3vw, 32px) clamp(16px, 4vw, 40px) 80px;
+    display: grid; grid-template-columns: minmax(320px, 400px) 1fr;
+    gap: 24px; align-items: start;
+  }
+  @media (max-width: 940px) { main { grid-template-columns: 1fr; } }
+
+  .hero { grid-column: 1 / -1; margin-bottom: 4px; }
+  .hero h1 {
+    font-size: clamp(26px, 4vw, 40px); margin: 6px 0 8px; letter-spacing: -0.03em; font-weight: 750;
+  }
+  .hero h1 .grad {
+    background: linear-gradient(100deg, var(--violet), var(--cyan));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero p { color: var(--muted); margin: 0; max-width: 68ch; font-size: 15px; line-height: 1.6; }
+
+  /* ---------- Form ---------- */
+  .panel { padding: 20px; }
+  .panel h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--faint); margin: 0 0 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: rgba(0,0,0,0.28); color: var(--text);
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    font-family: var(--font); font-size: 13.5px; transition: 0.15s; resize: vertical;
+  }
+  .field textarea { min-height: 70px; line-height: 1.5; }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: rgba(139,109,255,0.7);
+    box-shadow: 0 0 0 3px rgba(139,109,255,0.16);
+  }
+  .field select option { background: #111320; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .hint { font-size: 11px; color: var(--faint); margin-top: 5px; }
+
+  .actions { display: flex; gap: 10px; margin-top: 18px; }
+  .btn-primary {
+    flex: 1; border: none; cursor: pointer; color: #0a0b10; font-weight: 650; font-size: 14px;
+    padding: 12px 16px; border-radius: 12px;
+    background: linear-gradient(100deg, var(--violet), var(--cyan));
+    box-shadow: 0 12px 30px -10px rgba(139,109,255,0.6); transition: 0.18s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 16px 36px -10px rgba(139,109,255,0.75); }
+  .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+  .modeToggle { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--border); border-radius: 11px; background: rgba(0,0,0,0.28); margin-bottom: 8px; }
+  .modeopt { flex: 1; border: none; background: transparent; color: var(--muted); font-size: 12.5px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-family: var(--font); transition: 0.15s; }
+  .modeopt.active { background: rgba(139,109,255,0.22); color: var(--text); box-shadow: inset 0 0 0 1px rgba(139,109,255,0.4); }
+
+  /* ---------- Pipeline ---------- */
+  .stagegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { .stagegrid { grid-template-columns: 1fr; } }
+  .stage {
+    padding: 16px; border-radius: 14px; border: 1px solid var(--border);
+    background: var(--panel); position: relative; overflow: hidden; transition: 0.25s;
+  }
+  .stage .num {
+    position: absolute; top: 12px; right: 14px; font-family: var(--mono);
+    font-size: 11px; color: var(--faint);
+  }
+  .stage .icon {
+    width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border); margin-bottom: 12px;
+    font-size: 19px;
+  }
+  .stage h3 { margin: 0 0 3px; font-size: 15px; font-weight: 650; }
+  .stage .role { font-size: 12px; color: var(--muted); margin: 0 0 12px; }
+  .stage .statusline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--faint); }
+  .stage .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+  .stage .tok { margin-left: auto; font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+  .stage.running { border-color: rgba(139,109,255,0.55); background: rgba(139,109,255,0.07); }
+  .stage.running .sdot { background: var(--violet); animation: pulse 1.1s infinite; }
+  .stage.running .icon { animation: bob 1.6s ease-in-out infinite; }
+  .stage.done { border-color: rgba(74,222,128,0.4); }
+  .stage.done .sdot { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .stage.running::after {
+    content: ""; position: absolute; left: 0; bottom: 0; height: 2px; width: 100%;
+    background: linear-gradient(90deg, transparent, var(--violet), var(--cyan), transparent);
+    animation: sweep 1.4s linear infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+  @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes sweep { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+  /* Token budget meter */
+  .meter-wrap { margin-top: 18px; }
+  .meter-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 7px; }
+  .meter-head b { color: var(--text); font-family: var(--mono); }
+  .meter { height: 10px; border-radius: 999px; background: rgba(255,255,255,0.06); overflow: hidden; border: 1px solid var(--border); }
+  .meter > i {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    border-radius: 999px; transition: width 0.5s cubic-bezier(.2,.7,.2,1);
+  }
+
+  /* ---------- Results ---------- */
+  .results { margin-top: 22px; display: grid; gap: 18px; }
+  .results.empty { display: none; }
+  .card { padding: 18px 20px; }
+  .card h2 { margin-top: 0; }
+  .scene { padding: 12px 0; border-top: 1px solid var(--border); }
+  .scene:first-of-type { border-top: none; }
+  .scene .slug { font-family: var(--mono); font-size: 12px; color: var(--cyan); }
+  .scene .act { font-size: 13px; color: var(--muted); margin: 5px 0; line-height: 1.5; }
+  .dlg { font-size: 12.5px; margin: 3px 0; }
+  .dlg b { color: var(--amber); }
+
+  .filmstrip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .frame {
+    flex: 0 0 200px; scroll-snap-align: start; border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden; background: rgba(0,0,0,0.25);
+  }
+  .frame .thumb {
+    height: 118px; position: relative; display: grid; place-items: center;
+    background: linear-gradient(135deg, rgba(139,109,255,0.22), rgba(53,224,232,0.16));
+  }
+  .frame .thumb .fnum { position: absolute; top: 8px; left: 8px; font-family: var(--mono); font-size: 10.5px; color: #fff; background: rgba(0,0,0,0.45); padding: 2px 6px; border-radius: 5px; }
+  .frame .thumb .cam { position: absolute; bottom: 8px; right: 8px; font-size: 10px; color: #cfd3e6; background: rgba(0,0,0,0.45); padding: 2px 6px; border-radius: 5px; }
+  .frame .thumb svg { width: 34px; height: 34px; opacity: 0.85; }
+  .frame .fp { padding: 10px; font-size: 11.5px; color: var(--muted); line-height: 1.45; height: 74px; overflow: hidden; }
+
+  .edl { display: grid; gap: 8px; }
+  .edl .clip { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; font-size: 12.5px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: rgba(255,255,255,0.02); }
+  .edl .clip .t { font-family: var(--mono); color: var(--cyan); }
+  .edl .clip .cue { color: var(--muted); }
+  .edl .clip .tr { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--faint); border: 1px solid var(--border); padding: 2px 7px; border-radius: 999px; }
+
+  .statgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 560px) { .statgrid { grid-template-columns: 1fr 1fr; } }
+  .stat { padding: 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,0.02); }
+  .stat .v { font-size: 22px; font-weight: 700; font-family: var(--mono); background: linear-gradient(100deg,#fff,var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 3px; }
+
+  /* ---------- Toasts ---------- */
+  #toasts { position: fixed; right: 20px; bottom: 20px; z-index: 60; display: flex; flex-direction: column; gap: 10px; }
+  .toast {
+    min-width: 240px; max-width: 340px; padding: 12px 14px; border-radius: 12px;
+    background: rgba(18,20,30,0.92); border: 1px solid var(--border-bright);
+    box-shadow: var(--shadow); font-size: 13px; display: flex; gap: 10px; align-items: flex-start;
+    animation: toastin 0.28s cubic-bezier(.2,.8,.2,1); backdrop-filter: blur(14px);
+  }
+  .toast.out { animation: toastout 0.25s forwards; }
+  .toast .ti { font-size: 15px; line-height: 1.2; }
+  .toast.ok { border-left: 3px solid var(--green); }
+  .toast.err { border-left: 3px solid var(--red); }
+  .toast.info { border-left: 3px solid var(--violet); }
+  @keyframes toastin { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+  @keyframes toastout { to { opacity: 0; transform: translateX(30px); } }
+
+  /* ---------- Command palette ---------- */
+  #palette { position: fixed; inset: 0; z-index: 80; display: none; align-items: flex-start; justify-content: center; padding-top: 14vh; background: rgba(3,4,8,0.6); backdrop-filter: blur(6px); }
+  #palette.open { display: flex; }
+  .palbox { width: min(560px, 92vw); overflow: hidden; }
+  .palbox input { width: 100%; border: none; background: transparent; color: var(--text); padding: 16px 18px; font-size: 15px; font-family: var(--font); border-bottom: 1px solid var(--border); }
+  .palbox input:focus { outline: none; }
+  .pallist { max-height: 320px; overflow-y: auto; padding: 6px; }
+  .palitem { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; cursor: pointer; font-size: 13.5px; }
+  .palitem .pi { font-size: 16px; width: 22px; text-align: center; }
+  .palitem .pk { margin-left: auto; }
+  .palitem.active, .palitem:hover { background: rgba(139,109,255,0.16); }
+  .palitem small { color: var(--faint); display: block; font-size: 11.5px; }
+
+  footer {
+    max-width: 1320px; margin: 0 auto; padding: 22px clamp(16px, 4vw, 40px) 40px;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+    color: var(--faint); font-size: 12.5px; border-top: 1px solid var(--border);
+  }
+  footer .spacer { flex: 1; }
+
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a0b10" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2.5" y="4.5" width="19" height="15" rx="3"/>
+          <path d="M2.5 9h19M7 4.5v15M17 4.5v15"/>
+        </svg>
+      </div>
+      <div class="wordmark">
+        <b>ReelWeaver</b>
+        <span>AI Showrunner</span>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <span class="badge" id="modeBadge"><span class="dot"></span><span id="modeText">Checking…</span></span>
+    <button class="ghost-btn" id="paletteBtn" title="Command palette">⌘ Menu <span class="kbd">Ctrl K</span></button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Weave a brief into a <span class="grad">vertical short drama</span></h1>
+      <p>ReelWeaver orchestrates four specialized Qwen agents — Scriptwriter, Storyboarder, Video Generator, and Editor — under a strict 30K-token budget. Describe your story, then watch the pipeline weave it, stage by stage.</p>
+    </section>
+
+    <!-- Brief -->
+    <form class="glass panel" id="briefForm" autocomplete="off">
+      <h2>◆ Creative Brief</h2>
+      <div class="field">
+        <label for="title">Title</label>
+        <input id="title" name="title" placeholder="The Last Message" required />
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label for="genre">Genre</label>
+          <select id="genre" name="genre">
+            <option>Sci-Fi Thriller</option>
+            <option>Romance</option>
+            <option>Psychological Drama</option>
+            <option>Horror</option>
+            <option>Crime Noir</option>
+            <option>Fantasy</option>
+            <option>Comedy</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="durationSeconds">Duration (s)</label>
+          <input id="durationSeconds" name="durationSeconds" type="number" min="30" max="180" value="90" />
+        </div>
+      </div>
+      <div class="field">
+        <label for="tone">Tone</label>
+        <input id="tone" name="tone" placeholder="Tense, claustrophobic, emotional" />
+      </div>
+      <div class="field">
+        <label for="logline">Logline</label>
+        <textarea id="logline" name="logline" placeholder="A deep-space pilot receives a final message from Earth — sent 40 years ago." required></textarea>
+      </div>
+      <div class="field">
+        <label for="characters">Characters <span class="hint" style="display:inline">(one per line — Name: description)</span></label>
+        <textarea id="characters" name="characters" placeholder="Commander Mara Voss: weathered pilot&#10;Echo: calm ship AI"></textarea>
+      </div>
+      <div class="field">
+        <label for="keyBeats">Key beats <span class="hint" style="display:inline">(one per line)</span></label>
+        <textarea id="keyBeats" name="keyBeats" placeholder="Routine patrol interrupted by ancient signal&#10;Time dilation reveal"></textarea>
+      </div>
+      <div class="field">
+        <label for="constraints">Constraints <span class="hint" style="display:inline">(one per line)</span></label>
+        <textarea id="constraints" name="constraints" placeholder="Vertical 9:16&#10;Hook in first 3 seconds&#10;Cliffhanger ending"></textarea>
+      </div>
+      <div class="modeToggle" id="modeToggle">
+        <button type="button" class="modeopt active" data-mode="demo">⚡ Demo</button>
+        <button type="button" class="modeopt" data-mode="live">🎥 Live · Wan 2.1</button>
+      </div>
+      <p class="hint" id="modeHint">Demo streams the full pipeline instantly with simulated clips — no API key needed.</p>
+      <div class="actions">
+        <button type="submit" class="btn-primary" id="runBtn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 9-14 9V3z"/></svg>
+          Weave the Reel
+        </button>
+        <button type="button" class="ghost-btn" id="sampleBtn">Sample</button>
+      </div>
+    </form>
+
+    <!-- Pipeline + results -->
+    <section>
+      <div class="glass panel">
+        <h2>◆ Pipeline</h2>
+        <div class="stagegrid" id="stageGrid">
+          <div class="stage" data-stage="scriptwriting">
+            <span class="num">01</span>
+            <div class="icon">📝</div>
+            <h3>Scriptwriter</h3>
+            <p class="role">Brief → structured screenplay</p>
+            <div class="statusline"><span class="sdot"></span><span class="st">Idle</span><span class="tok"></span></div>
+          </div>
+          <div class="stage" data-stage="storyboarding">
+            <span class="num">02</span>
+            <div class="icon">🎨</div>
+            <h3>Storyboarder</h3>
+            <p class="role">Script → frame-by-frame prompts</p>
+            <div class="statusline"><span class="sdot"></span><span class="st">Idle</span><span class="tok"></span></div>
+          </div>
+          <div class="stage" data-stage="videoGen">
+            <span class="num">03</span>
+            <div class="icon">🎥</div>
+            <h3>Video Generator</h3>
+            <p class="role">Frames → Wan 2.1 clips</p>
+            <div class="statusline"><span class="sdot"></span><span class="st">Idle</span><span class="tok"></span></div>
+          </div>
+          <div class="stage" data-stage="editing">
+            <span class="num">04</span>
+            <div class="icon">✂️</div>
+            <h3>Editor</h3>
+            <p class="role">Clips → edit decision list</p>
+            <div class="statusline"><span class="sdot"></span><span class="st">Idle</span><span class="tok"></span></div>
+          </div>
+        </div>
+
+        <div class="meter-wrap">
+          <div class="meter-head"><span>Token budget</span><span><b id="tokUsed">0</b> / <span id="tokTotal">30,000</span></span></div>
+          <div class="meter"><i id="tokBar"></i></div>
+        </div>
+      </div>
+
+      <div class="results empty" id="results">
+        <div class="glass card" id="statCard">
+          <h2>◆ Result</h2>
+          <div class="statgrid">
+            <div class="stat"><div class="v" id="sTitle">—</div><div class="l">Project</div></div>
+            <div class="stat"><div class="v" id="sScenes">0</div><div class="l">Scenes</div></div>
+            <div class="stat"><div class="v" id="sFrames">0</div><div class="l">Frames</div></div>
+            <div class="stat"><div class="v" id="sDur">0s</div><div class="l">Duration</div></div>
+          </div>
+        </div>
+
+        <div class="glass card">
+          <h2>◆ Script</h2>
+          <div id="scriptOut"></div>
+        </div>
+
+        <div class="glass card">
+          <h2>◆ Storyboard</h2>
+          <div class="filmstrip" id="filmstrip"></div>
+        </div>
+
+        <div class="glass card">
+          <h2>◆ Edit Decision List</h2>
+          <div class="edl" id="edlOut"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span><b style="color:var(--muted)">ReelWeaver</b> · AI Showrunner · Track 2</span>
+    <span>·</span>
+    <span>Global AI Hackathon with Qwen Cloud</span>
+    <div class="spacer"></div>
+    <a href="https://github.com/girishkhanna44/ReelWeaver" target="_blank" rel="noopener">github.com/girishkhanna44/ReelWeaver</a>
+  </footer>
+
+  <div id="toasts" aria-live="polite"></div>
+
+  <!-- Command palette -->
+  <div id="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="glass palbox">
+      <input id="palInput" placeholder="Type a command…" aria-label="Command search" />
+      <div class="pallist" id="palList"></div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const fmt = (n) => Number(n || 0).toLocaleString();
+
+  const STAGES = ["scriptwriting", "storyboarding", "videoGen", "editing"];
+  let running = false;
+  let mode = "demo";
+
+  /* ---------- Toasts ---------- */
+  function toast(msg, kind = "info", icon) {
+    const el = document.createElement("div");
+    el.className = "toast " + kind;
+    const ic = icon || (kind === "ok" ? "✅" : kind === "err" ? "⚠️" : "✦");
+    el.innerHTML = '<span class="ti">' + ic + '</span><span>' + msg + '</span>';
+    $("#toasts").appendChild(el);
+    setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 260); }, 3600);
+  }
+
+  /* ---------- Mode badge ---------- */
+  fetch("/api/health").then(r => r.json()).then(h => {
+    const badge = $("#modeBadge"), txt = $("#modeText");
+    if (h.mockMode) { badge.classList.add("mock"); txt.textContent = "Mock mode"; }
+    else txt.textContent = "Live · Qwen Cloud";
+  }).catch(() => { $("#modeText").textContent = "Offline"; });
+
+  fetch("/api/budget").then(r => r.json()).then(b => {
+    if (b.tokenBudget) $("#tokTotal").textContent = fmt(b.tokenBudget.total);
+  }).catch(() => {});
+
+  /* ---------- Form helpers ---------- */
+  function collectBrief() {
+    return {
+      title: $("#title").value.trim(),
+      genre: $("#genre").value,
+      tone: $("#tone").value.trim(),
+      logline: $("#logline").value.trim(),
+      durationSeconds: Number($("#durationSeconds").value) || 90,
+      characters: $("#characters").value,
+      keyBeats: $("#keyBeats").value,
+      constraints: $("#constraints").value,
+      mode: mode,
+    };
+  }
+
+  async function loadSample() {
+    try {
+      const b = await fetch("/api/sample-brief").then(r => r.json());
+      $("#title").value = b.title;
+      $("#genre").value = b.genre;
+      $("#tone").value = b.tone;
+      $("#logline").value = b.logline;
+      $("#durationSeconds").value = b.durationSeconds;
+      $("#characters").value = (b.characters || []).map(c => c.name + ": " + c.description).join("\n");
+      $("#keyBeats").value = (b.keyBeats || []).join("\n");
+      $("#constraints").value = (b.constraints || []).join("\n");
+      toast("Loaded sample brief — “" + b.title + "”", "ok", "🎬");
+    } catch { toast("Could not load sample", "err"); }
+  }
+
+  /* ---------- Pipeline UI ---------- */
+  function resetStages() {
+    $$(".stage").forEach(s => {
+      s.classList.remove("running", "done");
+      $(".st", s).textContent = "Idle";
+      $(".tok", s).textContent = "";
+    });
+    $("#tokBar").style.width = "0%";
+    $("#tokUsed").textContent = "0";
+  }
+  function setStage(stage, status, tokens) {
+    const el = $('.stage[data-stage="' + stage + '"]');
+    if (!el) return;
+    el.classList.remove("running", "done");
+    if (status === "running") { el.classList.add("running"); $(".st", el).textContent = "Working…"; }
+    else if (status === "done") { el.classList.add("done"); $(".st", el).textContent = "Complete"; if (tokens != null) $(".tok", el).textContent = fmt(tokens) + " tok"; }
+  }
+  function setBudget(used, total) {
+    const t = total || 30000;
+    $("#tokUsed").textContent = fmt(used);
+    $("#tokBar").style.width = Math.min(100, (used / t) * 100) + "%";
+  }
+
+  /* ---------- Render results ---------- */
+  const camIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.6"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>';
+
+  function renderResult(result) {
+    $("#results").classList.remove("empty");
+    $("#sTitle").textContent = result.title || "—";
+    $("#sScenes").textContent = (result.script && result.script.scenes.length) || 0;
+    $("#sFrames").textContent = (result.storyboard && result.storyboard.totalFrames) || 0;
+    $("#sDur").textContent = (result.duration || 0) + "s";
+
+    // Script
+    const so = $("#scriptOut"); so.innerHTML = "";
+    (result.script.scenes || []).forEach(sc => {
+      const d = document.createElement("div"); d.className = "scene";
+      let html = '<div class="slug">Scene ' + sc.sceneNumber + " · " + esc(sc.slugline) + '</div>';
+      html += '<div class="act">' + esc((sc.action || "").slice(0, 220)) + '</div>';
+      (sc.dialogue || []).forEach(dl => {
+        html += '<div class="dlg"><b>' + esc(dl.character) + ':</b> “' + esc(dl.line) + '”</div>';
+      });
+      d.innerHTML = html; so.appendChild(d);
+    });
+
+    // Storyboard filmstrip
+    const fs = $("#filmstrip"); fs.innerHTML = "";
+    (result.storyboard.frames || []).forEach(f => {
+      const d = document.createElement("div"); d.className = "frame";
+      d.innerHTML =
+        '<div class="thumb"><span class="fnum">S' + f.sceneNumber + " · F" + f.frameNumber + '</span>' +
+        camIcon + '<span class="cam">' + esc(f.cameraAngle || "") + '</span></div>' +
+        '<div class="fp">' + esc((f.prompt || "").slice(0, 150)) + '…</div>';
+      fs.appendChild(d);
+    });
+
+    // EDL
+    const edl = $("#edlOut"); edl.innerHTML = "";
+    (result.editPlan || []).forEach((e, i) => {
+      const d = document.createElement("div"); d.className = "clip";
+      d.innerHTML =
+        '<span class="t">' + (e.startTime ?? 0) + "s–" + (e.endTime ?? 0) + 's</span>' +
+        '<span class="cue">S' + e.sceneNumber + "F" + e.frameNumber + (e.audioCue ? " · " + esc(e.audioCue) : "") + '</span>' +
+        '<span class="tr">' + esc(e.transition || "cut") + '</span>';
+      edl.appendChild(d);
+    });
+    $("#results").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+  /* ---------- Run (SSE over fetch POST) ---------- */
+  async function run() {
+    if (running) return;
+    const brief = collectBrief();
+    if (!brief.title || !brief.logline) { toast("Title and logline are required", "err"); return; }
+    running = true;
+    $("#runBtn").disabled = true;
+    resetStages();
+    $("#results").classList.add("empty");
+    toast("Weaving “" + brief.title + "”…", "info", "🧵");
+
+    try {
+      const res = await fetch("/api/generate/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(brief),
+      });
+      if (!res.ok) throw new Error("Server returned " + res.status);
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      let finalResult = null;
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop();
+        for (const part of parts) {
+          const line = part.split("\n").find(l => l.startsWith("data: "));
+          if (!line) continue;
+          let ev; try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+          handleEvent(ev, r => finalResult = r);
+        }
+      }
+      if (finalResult) { renderResult(finalResult); toast("Reel woven — " + finalResult.title, "ok", "🎉"); }
+    } catch (err) {
+      toast("Pipeline failed: " + err.message, "err");
+    } finally {
+      running = false;
+      $("#runBtn").disabled = false;
+    }
+  }
+
+  function handleEvent(ev, setResult) {
+    if (ev.tokensUsed != null) setBudget(ev.tokensUsed, ev.tokenBudget);
+    if (ev.stage === "videoGen" && ev.status === "progress" && ev.clip) {
+      const el = $('.stage[data-stage="videoGen"]');
+      if (el) { el.classList.add("running"); $(".st", el).textContent = "Clip " + ev.clip.index + "/" + ev.clip.total; }
+      return;
+    }
+    if (STAGES.includes(ev.stage)) setStage(ev.stage, ev.status, ev.tokens);
+    if (ev.stage === "result" && ev.result) setResult(ev.result);
+    if (ev.stage === "error") toast(ev.error || "Pipeline error", "err");
+  }
+
+  /* ---------- Command palette ---------- */
+  const COMMANDS = [
+    { icon: "🧵", label: "Weave the reel", sub: "Run the full pipeline", key: "Enter", run: run },
+    { icon: "🎬", label: "Load sample brief", sub: "The Last Message", run: loadSample },
+    { icon: "🧹", label: "Clear brief", sub: "Empty all fields", run: clearForm },
+    { icon: "📋", label: "Copy last result (JSON)", sub: "Copy pipeline output", run: copyResult },
+    { icon: "🔀", label: "Randomize seed brief", sub: "Try a fresh idea", run: randomBrief },
+    { icon: "↗", label: "Open GitHub repo", sub: "girishkhanna44/ReelWeaver", run: () => window.open("https://github.com/girishkhanna44/ReelWeaver", "_blank") },
+  ];
+  let lastResult = null, palActive = 0, palShown = COMMANDS;
+
+  function openPalette() {
+    $("#palette").classList.add("open");
+    $("#palInput").value = ""; palActive = 0; renderPalette(COMMANDS);
+    setTimeout(() => $("#palInput").focus(), 20);
+  }
+  function closePalette() { $("#palette").classList.remove("open"); }
+  function renderPalette(list) {
+    palShown = list;
+    const el = $("#palList"); el.innerHTML = "";
+    list.forEach((c, i) => {
+      const d = document.createElement("div");
+      d.className = "palitem" + (i === palActive ? " active" : "");
+      d.innerHTML = '<span class="pi">' + c.icon + '</span><span><span>' + c.label + '</span><small>' + c.sub + "</small></span>" + (c.key ? '<span class="pk kbd">' + c.key + "</span>" : "");
+      d.onclick = () => { closePalette(); c.run(); };
+      el.appendChild(d);
+    });
+  }
+  $("#palInput").addEventListener("input", (e) => {
+    const q = e.target.value.toLowerCase();
+    palActive = 0;
+    renderPalette(COMMANDS.filter(c => (c.label + " " + c.sub).toLowerCase().includes(q)));
+  });
+  $("#palInput").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); palActive = Math.min(palActive + 1, palShown.length - 1); renderPalette(palShown); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); palActive = Math.max(palActive - 1, 0); renderPalette(palShown); }
+    else if (e.key === "Enter") { e.preventDefault(); const c = palShown[palActive]; if (c) { closePalette(); c.run(); } }
+    else if (e.key === "Escape") closePalette();
+  });
+  $("#palette").addEventListener("click", (e) => { if (e.target.id === "palette") closePalette(); });
+
+  function clearForm() { $$("#briefForm input, #briefForm textarea").forEach(i => { if (i.type !== "number") i.value = ""; }); $("#durationSeconds").value = 90; toast("Brief cleared", "info", "🧹"); }
+  function copyResult() {
+    if (!lastResult) { toast("No result to copy yet", "err"); return; }
+    navigator.clipboard.writeText(JSON.stringify(lastResult, null, 2)).then(
+      () => toast("Result JSON copied", "ok", "📋"),
+      () => toast("Clipboard blocked", "err")
+    );
+  }
+  const SEEDS = [
+    { title: "Signal at 3 AM", genre: "Horror", tone: "Dread, isolation", logline: "A night-shift radio operator hears her own voice calling for help on a dead frequency." },
+    { title: "The Understudy", genre: "Psychological Drama", tone: "Obsessive, glamorous", logline: "A ballet understudy realizes the prima ballerina she's replacing never existed." },
+    { title: "Last Order", genre: "Crime Noir", tone: "Rain-soaked, fatalistic", logline: "A diner cook recognizes the fugitive at table six as the brother he testified against." },
+    { title: "Bloom", genre: "Romance", tone: "Warm, bittersweet", logline: "Two florists on opposite sides of a street war fall for each other through anonymous bouquets." },
+  ];
+  function randomBrief() {
+    const s = SEEDS[Math.floor(Math.random() * SEEDS.length)];
+    $("#title").value = s.title; $("#genre").value = s.genre; $("#tone").value = s.tone; $("#logline").value = s.logline;
+    $("#characters").value = ""; $("#keyBeats").value = ""; $("#constraints").value = "Vertical 9:16\nHook in first 3 seconds\nCliffhanger ending";
+    toast("Seeded — “" + s.title + "”", "info", "🔀");
+  }
+
+  /* ---------- Wire up ---------- */
+  $("#briefForm").addEventListener("submit", (e) => { e.preventDefault(); run(); });
+  $("#sampleBtn").addEventListener("click", loadSample);
+  $$("#modeToggle .modeopt").forEach(btn => btn.addEventListener("click", () => {
+    $$("#modeToggle .modeopt").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    mode = btn.dataset.mode;
+    $("#modeHint").textContent = mode === "live"
+      ? "Live mode calls real Qwen + Wan 2.1 — needs a QWEN_API_KEY, uses credits, and takes a few minutes."
+      : "Demo streams the full pipeline instantly with simulated clips — no API key needed.";
+  }));
+  $("#paletteBtn").addEventListener("click", openPalette);
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); openPalette(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); }
+  });
+
+  // Keep a copy of the last full result for "copy JSON".
+  const _render = renderResult;
+  renderResult = function (r) { lastResult = r; _render(r); };
+
+  // Prefill with the sample so the studio is never empty on first load.
+  loadSample();
+})();
+</script>
+</body>
+</html>

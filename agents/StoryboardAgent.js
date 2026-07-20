@@ -69,7 +69,7 @@ Return JSON matching StoryboardSchema with styleGuide.`;
       temperature: 0.6 
     });
 
-    const parsed = JSON.parse(result.content);
+    const parsed = this.parseJsonResponse(result.content);
     return StoryboardSchema.parse({
       ...parsed,
       scriptId: parsed.scriptId || `script_${Date.now()}`,

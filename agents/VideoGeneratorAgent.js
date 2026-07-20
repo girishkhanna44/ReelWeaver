@@ -1,6 +1,7 @@
 const BaseAgent = require('./BaseAgent');
 const { VideoGenerationSchema } = require('../src/schemas');
 const config = require('../config/qwen');
+const DashScopeVideo = require('../tools/dashscope-video');
 
 const VIDEO_GEN_SYSTEM_PROMPT = `You are a Wan 2.1 video generation specialist.
 You take storyboard frames and generate optimized prompts for the Wan 2.1 model.
@@ -21,6 +22,9 @@ class VideoGeneratorAgent extends BaseAgent {
     super('VideoGenerator', VIDEO_GEN_SYSTEM_PROMPT, config.models.chat);
     this.tokenBudget = tokenBudget;
     this.wanConfig = config.wan;
+    // Real Wan 2.1 client is only created when a live API key is present.
+    // Without a key the agent stays in mock mode and simulates generation.
+    this.videoClient = this.mockMode ? null : new DashScopeVideo({ model: config.models.video });
   }
 
   async generatePrompts(storyboard) {
@@ -63,35 +67,56 @@ Return JSON array matching this structure:
   }
 ]`;
 
-    const result = await this.complete(prompt, { 
-      json: true, 
+    const result = await this.complete(prompt, {
+      json: true,
       maxTokens: this.tokenBudget,
-      temperature: 0.5 
+      temperature: 0.5
     });
 
-    return JSON.parse(result.content);
+    return this.parseJsonResponse(result.content);
   }
 
-  // Simulated Wan 2.1 API call - replace with actual Qwen Cloud video generation API
+  /**
+   * Generate a single clip. In live mode this calls the real Wan 2.1
+   * text-to-video API on Qwen Cloud (DashScope); in mock mode it simulates.
+   */
   async generateVideo(wanPrompt, params = {}) {
-    // This would call the actual Wan 2.1 API on Qwen Cloud
-    // For now, return a mock response structure
     const tokenCost = Math.floor(wanPrompt.length / 4) + 100;
-    
+
+    if (this.mockMode || !this.videoClient) {
+      return {
+        videoUrl: `https://qwen-cloud.example.com/videos/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp4`,
+        localPath: undefined,
+        duration: params.duration || this.wanConfig.duration,
+        status: 'completed',
+        tokenCost,
+      };
+    }
+
+    // Live Wan 2.1 call on Qwen Cloud.
+    const gen = await this.videoClient.generate(wanPrompt, {
+      negativePrompt: params.negativePrompt || params.negative_prompt,
+      size: params.size || (params.aspect_ratio === '9:16' ? this.wanConfig.size : undefined),
+    });
+
     return {
-      videoUrl: `https://qwen-cloud.example.com/videos/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.mp4`,
+      videoUrl: gen.videoUrl,
       localPath: undefined,
       duration: params.duration || this.wanConfig.duration,
-      status: 'completed',
+      status: gen.status,
+      taskId: gen.taskId,
       tokenCost,
     };
   }
 
-  async generateAllVideos(storyboard) {
+  async generateAllVideos(storyboard, onProgress) {
     const optimizedPrompts = await this.generatePrompts(storyboard);
     const clips = [];
+    const total = optimizedPrompts.length;
+    let index = 0;
 
     for (const promptData of optimizedPrompts) {
+      index += 1;
       const clip = {
         sceneNumber: promptData.sceneNumber,
         frameNumber: promptData.frameNumber,
@@ -101,6 +126,10 @@ Return JSON array matching this structure:
         status: 'pending',
       };
 
+      if (typeof onProgress === 'function') {
+        onProgress({ index, total, sceneNumber: clip.sceneNumber, frameNumber: clip.frameNumber, status: 'generating' });
+      }
+
       try {
         const videoResult = await this.generateVideo(promptData.wanPrompt, promptData.parameters);
         clips.push({
@@ -108,6 +137,7 @@ Return JSON array matching this structure:
           videoUrl: videoResult.videoUrl,
           localPath: videoResult.localPath,
           status: videoResult.status,
+          taskId: videoResult.taskId,
           tokenCost: videoResult.tokenCost,
         });
       } catch (error) {

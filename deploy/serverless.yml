@@ -1,7 +1,7 @@
-# DramaForge - Serverless Framework Config
+# ReelWeaver - Serverless Framework Config
 # Alternative to template.yml for Serverless Framework users
 
-service: dramaforge
+service: reelweaver
 
 provider:
   name: aliyun
@@ -20,7 +20,7 @@ provider:
   environment:
     QWEN_API_KEY: ${env:QWEN_API_KEY}
     QWEN_BASE_URL: https://dashscope.aliyuncs.com/compatible-mode/v1
-    OSS_BUCKET: ${env:OSS_BUCKET:-dramaforge-output}
+    OSS_BUCKET: ${env:OSS_BUCKET:-reelweaver-output}
     OSS_REGION: ${env:OSS_REGION:-oss-cn-hangzhou}
     NODE_ENV: production
 
@@ -44,11 +44,11 @@ functions:
       STAGE: orchestrator
     events:
       - http:
-          path: /dramaforge
+          path: /reelweaver
           method: post
           authType: anonymous
       - http:
-          path: /dramaforge
+          path: /reelweaver
           method: get
           authType: anonymous
 
@@ -105,8 +105,8 @@ plugins:
 
 custom:
   aliyun:
-    serviceName: dramaforge-service
-    description: DramaForge AI Showrunner Pipeline
+    serviceName: reelweaver-service
+    description: ReelWeaver AI Showrunner Pipeline
     logConfig:
-      project: dramaforge-logs
+      project: reelweaver-logs
       logstore: function-logs

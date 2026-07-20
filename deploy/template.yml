@@ -1,6 +1,6 @@
 ROSTemplateFormatVersion: '2015-09-01'
 Transform: 'Aliyun::Serverless-2018-04-03'
-Description: DramaForge AI Showrunner Pipeline - Function Compute Deployment
+Description: ReelWeaver AI Showrunner Pipeline - Function Compute Deployment
 
 Parameters:
   QwenApiKey:
@@ -11,7 +11,7 @@ Parameters:
   
   OSSBucketName:
     Type: String
-    Default: dramaforge-output
+    Default: reelweaver-output
     Description: OSS Bucket for video storage
   
   OSSRegion:
@@ -35,17 +35,17 @@ Parameters:
     Default: ""
 
 Resources:
-  DramaForgeService:
+  ReelWeaverService:
     Type: 'Aliyun::Serverless::Service'
     Properties:
-      Description: DramaForge AI Showrunner - Multi-agent vertical drama pipeline
+      Description: ReelWeaver AI Showrunner - Multi-agent vertical drama pipeline
       InternetAccess: true
       VpcConfig:
         VpcId: { Ref: VpcId }
         VSwitchIds: { Ref: VSwitchIds }
         SecurityGroupId: { Ref: SecurityGroupId }
       LogConfig:
-        Project: dramaforge-logs
+        Project: reelweaver-logs
         Logstore: function-logs
       EnvironmentVariables:
         QWEN_API_KEY: { Ref: QwenApiKey }
@@ -168,5 +168,5 @@ Outputs:
 
   ServiceName:
     Value:
-      Ref: DramaForgeService
+      Ref: ReelWeaverService
     Description: FC Service name

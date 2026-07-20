@@ -1,6 +1,6 @@
 # Proof of Alibaba Cloud Deployment
 
-This document demonstrates that DramaForge runs on Alibaba Cloud infrastructure as required by the Qwen Cloud Hackathon.
+This document demonstrates that ReelWeaver runs on Alibaba Cloud infrastructure as required by the Qwen Cloud Hackathon.
 
 ## 1. Function Compute Service
 
@@ -9,25 +9,25 @@ This document demonstrates that DramaForge runs on Alibaba Cloud infrastructure 
 ROSTemplateFormatVersion: '2015-09-01'
 Transform: 'Aliyun::Serverless-2018-04-03'
 Resources:
-  DramaForgeService:
+  ReelWeaverService:
     Type: 'Aliyun::Serverless::Service'
     Properties:
-      Description: DramaForge AI Showrunner Pipeline
+      Description: ReelWeaver AI Showrunner Pipeline
       InternetAccess: true
       VpcConfig:
         VpcId: vpc-bp1xxxxxx
         VSwitchIds:
           - vsw-bp1xxxxxx
         SecurityGroupId: sg-bp1xxxxxx
-      Role: acs:ram::123456789:role/FC-DramaForge-Role
+      Role: acs:ram::123456789:role/FC-ReelWeaver-Role
       LogConfig:
-        Project: dramaforge-logs
+        Project: reelweaver-logs
         Logstore: fc-logs
 
   OrchestratorFunction:
     Type: 'Aliyun::Serverless::Function'
     Properties:
-      Handler: agents/DramaForgeOrchestrator.handler
+      Handler: agents/ReelWeaverOrchestrator.handler
       Runtime: nodejs18
       CodeUri: ./
       Timeout: 900
@@ -38,7 +38,7 @@ Resources:
         QWEN_CHAT_MODEL: qwen-plus
         QWEN_VIDEO_MODEL: wan2.1-t2v-turbo
         OSS_REGION: oss-cn-hangzhou
-        OSS_BUCKET: dramaforge-output
+        OSS_BUCKET: reelweaver-output
         TOKEN_BUDGET_TOTAL: 30000
       Events:
         httpTrigger:
@@ -50,7 +50,7 @@ Resources:
 
 ## 2. Code Reference: Alibaba Cloud SDK Usage
 
-**File: `agents/DramaForgeOrchestrator.js`** (lines 1-50)
+**File: `agents/ReelWeaverOrchestrator.js`** (lines 1-50)
 
 ```javascript
 // Alibaba Cloud OSS Client for video storage
@@ -61,7 +61,7 @@ const ossClient = new Client({
   region: process.env.OSS_REGION || 'oss-cn-hangzhou',
   accessKeyId: process.env.OSS_ACCESS_KEY_ID,
   accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET,
-  bucket: process.env.OSS_BUCKET || 'dramaforge-output',
+  bucket: process.env.OSS_BUCKET || 'reelweaver-output',
 });
 
 // Upload final video to OSS
@@ -70,7 +70,7 @@ async function uploadToOSS(localPath, objectKey) {
     const result = await ossClient.put(objectKey, localPath);
     return `https://${process.env.OSS_BUCKET}.${process.env.OSS_REGION}.aliyuncs.com/${objectKey}`;
   } catch (error) {
-    console.error('[DramaForge] OSS upload failed:', error);
+    console.error('[ReelWeaver] OSS upload failed:', error);
     throw error;
   }
 }
@@ -79,7 +79,7 @@ async function uploadToOSS(localPath, objectKey) {
 exports.handler = async (event, context, callback) => {
   const brief = JSON.parse(event.body || '{}');
   
-  const orchestrator = new DramaForgeOrchestrator({
+  const orchestrator = new ReelWeaverOrchestrator({
     projectId: context.requestId,
   });
   
@@ -226,8 +226,8 @@ async function complete(systemPrompt, userPrompt, options = {}) {
       ],
       "Effect": "Allow",
       "Resource": [
-        "acs:oss:*:*:dramaforge-output",
-        "acs:oss:*:*:dramaforge-output/*"
+        "acs:oss:*:*:reelweaver-output",
+        "acs:oss:*:*:reelweaver-output/*"
       ]
     },
     {
@@ -242,47 +242,47 @@ async function complete(systemPrompt, userPrompt, options = {}) {
 }
 ```
 
-Role ARN: `acs:ram::123456789:role/FC-DramaForge-Role`
+Role ARN: `acs:ram::123456789:role/FC-ReelWeaver-Role`
 
 ## 6. Deployment Verification Commands
 
 ```bash
 # 1. Verify Function Compute service
-aliyun fc GetService --serviceName dramaforge-service --region cn-hangzhou
+aliyun fc GetService --serviceName reelweaver-service --region cn-hangzhou
 
 # 2. Verify functions deployed
-aliyun fc ListFunctions --serviceName dramaforge-service --region cn-hangzhou
+aliyun fc ListFunctions --serviceName reelweaver-service --region cn-hangzhou
 
 # 3. Verify OSS bucket exists
-aliyun oss ls oss://dramaforge-output --region oss-cn-hangzhou
+aliyun oss ls oss://reelweaver-output --region oss-cn-hangzhou
 
 # 4. Test DashScope API connectivity
 curl -H "Authorization: Bearer $QWEN_API_KEY" \
   https://dashscope.aliyuncs.com/compatible-mode/v1/models
 
 # 5. Invoke orchestrator
-curl -X POST https://dramaforge-service.cn-hangzhou.fc.devsapp.net/dramaforge \
+curl -X POST https://reelweaver-service.cn-hangzhou.fc.devsapp.net/reelweaver \
   -H "Content-Type: application/json" \
   -d '{"title":"Test","genre":"Test","tone":"Test","logline":"Test","durationSeconds":30,"characters":[{"name":"Test"}],"keyBeats":["Test"],"constraints":["Test"]}'
 
 # 6. Check OSS for output
-aliyun oss ls oss://dramaforge-output/outputs/ --region oss-cn-hangzhou
+aliyun oss ls oss://reelweaver-output/outputs/ --region oss-cn-hangzhou
 ```
 
 ## 7. Screenshots Checklist (for submission)
 
-- [ ] FC Console: Service `dramaforge-service` with 4 functions
+- [ ] FC Console: Service `reelweaver-service` with 4 functions
 - [ ] FC Console: Function `OrchestratorFunction` with env vars showing QWEN_API_KEY
 - [ ] FC Console: VPC config showing vpc-bp1xxxxxx, vsw-bp1xxxxxx
-- [ ] OSS Console: Bucket `dramaforge-output` with `outputs/` folder
+- [ ] OSS Console: Bucket `reelweaver-output` with `outputs/` folder
 - [ ] OSS Console: Generated video files in `outputs/`
-- [ ] RAM Console: Role `FC-DramaForge-Role` with OSS/FC policies
+- [ ] RAM Console: Role `FC-ReelWeaver-Role` with OSS/FC policies
 - [ ] VPC Console: NAT Gateway with SNAT entry
 - [ ] DashScope Console: API call logs showing qwen-plus/wan2.1 usage
 
 ---
 
 **Generated:** $(date)
-**Project:** DramaForge - AI Showrunner (Track 2)
+**Project:** ReelWeaver - AI Showrunner (Track 2)
 **Team:** [Your Team Name]
 **Hackathon:** Global AI Hackathon Series with Qwen Cloud

@@ -48,7 +48,7 @@ Return JSON matching the ScriptSchema exactly.`;
       temperature: 0.8 
     });
 
-    const parsed = JSON.parse(result.content);
+    const parsed = this.parseJsonResponse(result.content);
     return ScriptSchema.parse({
       ...parsed,
       tokenUsage: result.tokens,

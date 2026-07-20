@@ -1,8 +1,17 @@
-# DramaForge — AI Showrunner for Vertical Short Dramas
+# 🎬 ReelWeaver — AI Showrunner for Vertical Short Dramas
 
 **Track 2: AI Showrunner** — Global AI Hackathon with Qwen Cloud
 
-DramaForge is an autonomous multi-agent pipeline that transforms a creative brief into a complete vertical short drama (90 seconds, 9:16) using Qwen models on Qwen Cloud. The system orchestrates four specialized agents — Scriptwriter, Storyboarder, Video Generator, and Editor — under a strict 30K token budget.
+[![Track](https://img.shields.io/badge/Track%202-AI%20Showrunner-6C5CE7)](https://github.com/girishkhanna44/ReelWeaver)
+[![Qwen Cloud](https://img.shields.io/badge/Qwen%20Cloud-Wan%202.1-00B8D9)](https://dashscope.aliyuncs.com/)
+[![Node](https://img.shields.io/badge/Node-%3E%3D18-3C873A)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+
+> **ReelWeaver** weaves a one-paragraph creative brief into a complete vertical short drama — script, storyboard, video clips, and an edit decision list — by orchestrating four specialized Qwen agents under a strict 30K token budget.
+
+ReelWeaver is an autonomous multi-agent pipeline that transforms a creative brief into a complete vertical short drama (90 seconds, 9:16) using Qwen models on Qwen Cloud. The system orchestrates four specialized agents — Scriptwriter, Storyboarder, Video Generator, and Editor — under a strict 30K token budget. A glassy, black-themed **web studio** (`npm run ui`) streams every stage live over Server-Sent Events.
+
+**Repo:** https://github.com/girishkhanna44/ReelWeaver
 
 ## 🎬 Demo Output
 
@@ -40,8 +49,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed diagrams.
 
 ### Installation
 ```bash
-git clone https://github.com/yourusername/DramaForge
-cd DramaForge
+git clone https://github.com/girishkhanna44/ReelWeaver
+cd ReelWeaver
 npm install
 ```
 
@@ -51,9 +60,33 @@ cp .env.example .env
 # Edit .env with your Qwen Cloud API key
 ```
 
-### Run Demo (Mock Mode - No API Key Required)
+### Run the Web Studio (recommended)
 ```bash
-node demo.js
+npm run ui
+# → open http://localhost:3000
+```
+The studio has a **Demo / Live** toggle:
+
+- **⚡ Demo** — streams the full pipeline instantly with simulated clips. No API key required.
+- **🎥 Live · Wan 2.1** — runs the real pipeline: the Scriptwriter, Storyboarder,
+  Video-prompt, and Editor agents call **Qwen** (`qwen-plus`) over DashScope, and the
+  Video Generator submits real **Wan 2.1** (`wan2.1-t2v-turbo`) text-to-video jobs and
+  polls them to completion. Requires a `QWEN_API_KEY` in `.env`; uses credits and takes
+  a few minutes.
+
+### Live Qwen Cloud setup
+1. Get a DashScope API key: https://dashscope.aliyuncs.com/
+2. `cp .env.example .env` and set `QWEN_API_KEY=sk-...`
+3. `npm run ui`, then pick **Live · Wan 2.1** in the studio (or `node demo.js` for the CLI).
+
+Video generation uses DashScope's async video-synthesis API
+(`POST /services/aigc/video-generation/video-synthesis` → poll `GET /tasks/{id}`),
+implemented dependency-free in [`tools/dashscope-video.js`](tools/dashscope-video.js).
+
+### Run the CLI Demo (Mock Mode - No API Key Required)
+```bash
+node demo.js          # plain output
+node demo-video.js    # cinematic, colorized output for screen recording
 ```
 
 ### Run with Real Qwen Cloud API
@@ -75,23 +108,44 @@ node demo.js
 ## 📁 Project Structure
 
 ```
-DramaForge/
+ReelWeaver/
 ├── agents/
 │   ├── BaseAgent.js              # Shared LLM client + mock mode
 │   ├── ScriptwriterAgent.js      # Stage 1: Creative writing
 │   ├── StoryboardAgent.js        # Stage 2: Frame breakdown
 │   ├── VideoGeneratorAgent.js    # Stage 3: Wan 2.1 prompts + gen
 │   ├── EditorAgent.js            # Stage 4: EDL + rendering
-│   └── DramaForgeOrchestrator.js # Pipeline coordinator
+│   └── ReelWeaverOrchestrator.js # Pipeline coordinator
 ├── config/
 │   └── qwen.js                   # Model config, token budgets
 ├── src/
 │   └── schemas.js                # Zod schemas for all stages
-├── demo.js                       # Demo script
+├── ui/
+│   └── public/
+│       └── index.html            # Glassy black web studio (SSE live pipeline)
+├── server.js                     # Zero-dependency HTTP + SSE server (npm run ui)
+├── demo.js                       # CLI demo script
+├── demo-video.js                 # Cinematic CLI demo for screen recording
+├── index.js                      # Function Compute entry point
 ├── ARCHITECTURE.md               # Detailed architecture docs
+├── SUMMARY.md                    # One-page submission summary
 ├── .env.example                  # Config template
 └── package.json
 ```
+
+## 🖥️ Web Studio
+
+`npm run ui` serves a self-contained, glassy black-themed single-page studio at
+`http://localhost:3000`:
+
+- **Creative brief editor** with genre/tone presets and one-click sample briefs
+- **Live pipeline** — the four agents stream their progress over Server-Sent Events
+- **Token budget meter** updating per stage against the 30K budget
+- **Artifact viewer** — generated script scenes, storyboard frames, and the edit decision list
+- **Command palette** (`⌘/Ctrl + K`) and toast notifications
+
+The server has **no runtime dependencies beyond the pipeline itself** (built on Node's
+`http` module) and runs entirely in mock mode without an API key.
 
 ## 🎯 Track 2: AI Showrunner — Requirements Met
 
@@ -124,8 +178,8 @@ CMD ["node", "demo.js"]
 ```
 
 ### Proof of Deployment
-- Function Compute service: `dramaforge-agents`
-- OSS bucket: `dramaforge-output` (video storage)
+- Function Compute service: `reelweaver-agents`
+- OSS bucket: `reelweaver-output` (video storage)
 - VPC: Private network for secure API access
 - DashScope API: Qwen model endpoints
 
