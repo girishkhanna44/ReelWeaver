@@ -49,10 +49,52 @@ Return JSON matching the ScriptSchema exactly.`;
     });
 
     const parsed = this.parseJsonResponse(result.content);
-    return ScriptSchema.parse({
-      ...parsed,
-      tokenUsage: result.tokens,
-    });
+    const normalized = this.normalizeScript(parsed, brief, result.tokens);
+
+    const check = ScriptSchema.safeParse(normalized);
+    if (!check.success) {
+      const fields = [...new Set(check.error.issues.map(i => i.path.join('.')).filter(Boolean))].join(', ');
+      throw new Error(`Scriptwriter: the model's script was missing/invalid fields (${fields}). Try again or lower the duration.`);
+    }
+    return check.data;
+  }
+
+  // Fill sensible defaults so a slightly-off live model response still validates.
+  normalizeScript(p, brief = {}, tokens = 0) {
+    const scenes = (Array.isArray(p.scenes) ? p.scenes : []).map((s, i) => ({
+      sceneNumber: Number(s.sceneNumber) || i + 1,
+      slugline: s.slugline || s.heading || s.title || `SCENE ${i + 1}`,
+      location: s.location || 'Unspecified',
+      timeOfDay: s.timeOfDay || s.time || 'N/A',
+      action: s.action || s.description || s.summary || '',
+      characters: Array.isArray(s.characters)
+        ? s.characters.map(c => (typeof c === 'string' ? c : c && c.name)).filter(Boolean)
+        : [],
+      dialogue: Array.isArray(s.dialogue)
+        ? s.dialogue
+            .map(d => ({ character: d.character || d.name || 'Character', line: d.line || d.text || '', parenthetical: d.parenthetical }))
+            .filter(d => d.line)
+        : undefined,
+      visualNotes: s.visualNotes || s.notes,
+      estimatedDuration: Number(s.estimatedDuration) || Number(s.duration) || 15,
+    }));
+
+    const totalFromScenes = scenes.reduce((sum, s) => sum + s.estimatedDuration, 0);
+
+    return {
+      title: p.title || brief.title || 'Untitled',
+      logline: p.logline || brief.logline || '',
+      genre: p.genre || brief.genre || 'Drama',
+      tone: p.tone || brief.tone || 'Cinematic',
+      characters: (Array.isArray(p.characters) ? p.characters : (brief.characters || [])).map(c => ({
+        name: (typeof c === 'string' ? c : c.name) || 'Character',
+        description: (typeof c === 'object' && (c.description || c.desc)) || '',
+        arc: typeof c === 'object' ? c.arc : undefined,
+      })),
+      scenes,
+      totalEstimatedDuration: Number(p.totalEstimatedDuration) || totalFromScenes || Number(brief.durationSeconds) || 90,
+      tokenUsage: tokens,
+    };
   }
 }
 

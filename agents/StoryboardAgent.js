@@ -70,12 +70,30 @@ Return JSON matching StoryboardSchema with styleGuide.`;
     });
 
     const parsed = this.parseJsonResponse(result.content);
-    return StoryboardSchema.parse({
-      ...parsed,
+    const frames = (Array.isArray(parsed.frames) ? parsed.frames : []).map((f, i) => ({
+      sceneNumber: Number(f.sceneNumber) || 1,
+      frameNumber: Number(f.frameNumber) || i + 1,
+      prompt: f.prompt || f.description || '',
+      cameraAngle: f.cameraAngle || f.camera || 'medium',
+      movement: f.movement || 'static',
+      duration: Number(f.duration) || 5,
+      promptTokens: Number(f.promptTokens) || Math.ceil((f.prompt || '').length / 4),
+    })).filter(f => f.prompt);
+
+    const normalized = {
       scriptId: parsed.scriptId || `script_${Date.now()}`,
+      frames,
+      totalFrames: frames.length,
       styleGuide: this.styleGuide,
       totalPromptTokens: result.tokens,
-    });
+    };
+
+    const check = StoryboardSchema.safeParse(normalized);
+    if (!check.success) {
+      const fields = [...new Set(check.error.issues.map(i => i.path.join('.')).filter(Boolean))].join(', ');
+      throw new Error(`Storyboarder: the model's storyboard was missing/invalid fields (${fields}). Try again.`);
+    }
+    return check.data;
   }
 }
 

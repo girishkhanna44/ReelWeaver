@@ -171,6 +171,7 @@ const server = http.createServer(async (req, res) => {
         keyLength: key ? key.length : 0,
         chatBaseURL: config.baseURL,
         videoBaseURL: config.dashscopeBase,
+        regionMismatch: /intl/.test(config.baseURL) !== /intl/.test(config.dashscopeBase),
         chatModel: config.models.chat,
         videoModel: config.models.video,
         timestamp: new Date().toISOString(),
@@ -193,7 +194,17 @@ const server = http.createServer(async (req, res) => {
           messages: [{ role: 'user', content: 'ping' }],
           max_tokens: 1,
         });
-        return sendJson(res, 200, { ok: true, chatModel: config.models.chat, chatBaseURL: config.baseURL, message: 'API key works against this endpoint.' });
+        const regionMismatch = /intl/.test(config.baseURL) !== /intl/.test(config.dashscopeBase);
+        return sendJson(res, 200, {
+          ok: true,
+          chatModel: config.models.chat,
+          chatBaseURL: config.baseURL,
+          videoBaseURL: config.dashscopeBase,
+          regionMismatch,
+          message: regionMismatch
+            ? 'Chat key works, BUT your chat and video endpoints are in different regions — video generation will 401. Set QWEN_BASE_URL and DASHSCOPE_BASE_URL to the SAME region (both -intl or both not).'
+            : 'API key works against this endpoint (chat + video share the same region).',
+        });
       } catch (err) {
         return sendJson(res, 200, {
           ok: false,
