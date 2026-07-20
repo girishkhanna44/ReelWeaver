@@ -69,11 +69,14 @@ class DashScopeVideo {
   /**
    * Poll a task until it reaches a terminal state, or the timeout elapses.
    */
-  async pollTask(taskId) {
+  async pollTask(taskId, { shouldStop } = {}) {
     const url = `${this.base}/tasks/${taskId}`;
     const deadline = Date.now() + this.pollTimeoutMs;
 
     while (Date.now() < deadline) {
+      if (shouldStop && shouldStop()) {
+        return { status: 'stopped', taskId };
+      }
       const res = await fetch(url, { headers: this.headers });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -105,7 +108,7 @@ class DashScopeVideo {
    */
   async generate(prompt, opts = {}) {
     const taskId = await this.submitTask(prompt, opts);
-    return this.pollTask(taskId);
+    return this.pollTask(taskId, { shouldStop: opts.shouldStop });
   }
 }
 

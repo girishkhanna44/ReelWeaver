@@ -19,11 +19,15 @@ require('dotenv').config();
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const ReelWeaverOrchestrator = require('./agents/ReelWeaverOrchestrator');
 const config = require('./config/qwen');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'ui', 'public');
+
+// In-flight generation jobs, keyed by jobId, so a client can cancel a render.
+const JOBS = new Map();
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -41,7 +45,7 @@ const SAMPLE_BRIEF = {
   genre: 'Sci-Fi Thriller',
   tone: 'Tense, claustrophobic, emotional',
   logline: 'A deep-space pilot receives a final message from Earth — sent 40 years ago.',
-  durationSeconds: 90,
+  durationSeconds: 15,
   episodeCount: 1,
   characters: [
     { name: 'Commander Mara Voss', description: 'Late 30s, weathered pilot, haunted by leaving family behind', arc: 'Acceptance of sacrifice' },
@@ -254,18 +258,24 @@ const server = http.createServer(async (req, res) => {
 
       const write = (event) => res.write(`data: ${JSON.stringify(event)}\n\n`);
 
+      // Register a cancellable job so the client can stop a long render.
+      const jobId = crypto.randomUUID();
+      const job = { aborted: false };
+      JOBS.set(jobId, job);
+      write({ stage: 'job', jobId });
+
       // Heartbeat so proxies (Render, nginx, etc.) don't drop the connection
-      // during multi-minute Wan 2.1 renders that emit no events.
+      // during multi-minute renders that emit no events.
       const heartbeat = setInterval(() => res.write(': keepalive\n\n'), 15000);
-      req.on('close', () => clearInterval(heartbeat));
+      req.on('close', () => { clearInterval(heartbeat); job.aborted = true; });
 
       const live = raw.mode === 'live';
       const mock = !config.apiKey || config.apiKey === 'your_qwen_cloud_api_key_here';
       if (live && mock) {
-        write({ stage: 'error', status: 'failed', error: 'Live mode needs a QWEN_API_KEY in .env — falling back to demo.' });
+        write({ stage: 'error', status: 'failed', error: 'Rendering needs an API key — showing a preview instead.' });
       }
 
-      const orchestrator = new ReelWeaverOrchestrator({ onProgress: write });
+      const orchestrator = new ReelWeaverOrchestrator({ onProgress: write, shouldStop: () => job.aborted });
       try {
         const result = (live && !mock) ? await orchestrator.run(brief) : await orchestrator.runDemo(brief);
         write({ stage: 'result', status: 'done', result, tokenUsage: orchestrator.getTokenBudget() });
@@ -273,8 +283,17 @@ const server = http.createServer(async (req, res) => {
         write({ stage: 'error', status: 'failed', error: err.message });
       }
       clearInterval(heartbeat);
+      JOBS.delete(jobId);
       res.write('event: end\ndata: {}\n\n');
       return res.end();
+    }
+
+    // Request that an in-flight render stop and jump to the editor.
+    if (urlPath === '/api/generate/stop' && method === 'POST') {
+      const { jobId } = await readBody(req);
+      const job = JOBS.get(jobId);
+      if (job) { job.aborted = true; return sendJson(res, 200, { ok: true }); }
+      return sendJson(res, 200, { ok: false, error: 'No active job with that id' });
     }
 
     if (urlPath.startsWith('/api/')) {

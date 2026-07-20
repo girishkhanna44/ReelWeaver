@@ -80,7 +80,7 @@ Return JSON array matching this structure:
    * Generate a single clip. In live mode this calls the real Wan 2.1
    * text-to-video API on Qwen Cloud (DashScope); in mock mode it simulates.
    */
-  async generateVideo(wanPrompt, params = {}) {
+  async generateVideo(wanPrompt, params = {}, shouldStop) {
     const tokenCost = Math.floor(wanPrompt.length / 4) + 100;
 
     if (this.mockMode || !this.videoClient) {
@@ -93,10 +93,11 @@ Return JSON array matching this structure:
       };
     }
 
-    // Live Wan 2.1 call on Qwen Cloud.
+    // Live Wan 2.1 call on Qwen Cloud (interruptible via shouldStop).
     const gen = await this.videoClient.generate(wanPrompt, {
       negativePrompt: params.negativePrompt || params.negative_prompt,
       size: params.size || (params.aspect_ratio === '9:16' ? this.wanConfig.size : undefined),
+      shouldStop,
     });
 
     return {
@@ -109,7 +110,7 @@ Return JSON array matching this structure:
     };
   }
 
-  async generateAllVideos(storyboard, onProgress) {
+  async generateAllVideos(storyboard, onProgress, shouldStop) {
     const optimizedPrompts = await this.generatePrompts(storyboard);
     const clips = [];
     const total = optimizedPrompts.length;
@@ -117,6 +118,12 @@ Return JSON array matching this structure:
 
     for (const promptData of optimizedPrompts) {
       index += 1;
+
+      // Honor a user-requested stop between clips — skip the rest and move on.
+      if (shouldStop && shouldStop()) {
+        break;
+      }
+
       const clip = {
         sceneNumber: promptData.sceneNumber,
         frameNumber: promptData.frameNumber,
@@ -131,7 +138,12 @@ Return JSON array matching this structure:
       }
 
       try {
-        const videoResult = await this.generateVideo(promptData.wanPrompt, promptData.parameters);
+        const videoResult = await this.generateVideo(promptData.wanPrompt, promptData.parameters, shouldStop);
+        if (videoResult.status === 'stopped') {
+          // Interrupted mid-render — record and stop generating further clips.
+          clips.push({ ...clip, status: 'failed', error: 'stopped by user' });
+          break;
+        }
         clips.push({
           ...clip,
           videoUrl: videoResult.videoUrl,
@@ -149,16 +161,18 @@ Return JSON array matching this structure:
       }
     }
 
-    const totalDuration = clips.reduce((sum, c) => sum + c.duration, 0);
+    const totalDuration = Math.max(1, clips.reduce((sum, c) => sum + (c.duration || 0), 0));
     const totalTokenCost = clips.reduce((sum, c) => sum + (c.tokenCost || 0), 0);
+    const completedCount = clips.filter(c => c.status === 'completed').length;
 
     return VideoGenerationSchema.parse({
       storyboardId: `sb_${Date.now()}`,
       clips,
       totalDuration,
       totalTokenCost,
-      status: clips.every(c => c.status === 'completed') ? 'completed' : 
-              clips.some(c => c.status === 'completed') ? 'partial' : 'failed',
+      status: clips.length && completedCount === clips.length ? 'completed'
+        : completedCount > 0 ? 'partial'
+        : 'failed',
     });
   }
 }

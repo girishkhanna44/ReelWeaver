@@ -17,6 +17,9 @@ class ReelWeaverOrchestrator {
     // Optional progress hook: (event) => void. Used by the UI server to stream
     // live stage-by-stage updates over Server-Sent Events.
     this.onProgress = typeof options.onProgress === 'function' ? options.onProgress : () => {};
+    // Optional cancellation hook: () => boolean. When it returns true, video
+    // generation stops early and the pipeline proceeds to the editor.
+    this.shouldStop = typeof options.shouldStop === 'function' ? options.shouldStop : () => false;
   }
 
   emit(stage, status, data = {}) {
@@ -68,13 +71,16 @@ class ReelWeaverOrchestrator {
     // Stage 3: Video Generation (real Wan 2.1 calls when a live API key is set)
     console.log('[Stage 3/4] Generating videos...');
     this.emit('videoGen', 'running');
-    const videoResult = await this.videoGen.generateAllVideos(storyboard, (p) =>
-      this.emit('videoGen', 'progress', { clip: p })
+    const videoResult = await this.videoGen.generateAllVideos(
+      storyboard,
+      (p) => this.emit('videoGen', 'progress', { clip: p }),
+      this.shouldStop
     );
     this.totalTokensUsed += videoResult.totalTokenCost;
     const completedClips = videoResult.clips.filter(c => c.status === 'completed').length;
-    console.log(`[Stage 3] Video gen complete: ${completedClips}/${videoResult.clips.length} clips, ${videoResult.totalTokenCost} tokens`);
-    this.emit('videoGen', 'done', { videoResult, tokens: videoResult.totalTokenCost });
+    const stopped = this.shouldStop();
+    console.log(`[Stage 3] Video gen ${stopped ? 'stopped' : 'complete'}: ${completedClips}/${videoResult.clips.length} clips, ${videoResult.totalTokenCost} tokens`);
+    this.emit('videoGen', 'done', { videoResult, tokens: videoResult.totalTokenCost, stopped });
 
     // Stage 4: Editing
     console.log('[Stage 4/4] Editing final video...');
