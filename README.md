@@ -1,6 +1,5 @@
 # 🎬 ReelWeaver — AI Showrunner for Vertical Short Dramas
-
-**Track 2: AI Showrunner** 
+ 
 [![Track](https://img.shields.io/badge/Track%202-AI%20Showrunner-6C5CE7)](https://github.com/girishkhanna44/ReelWeaver)
 [![Qwen Cloud](https://img.shields.io/badge/Qwen%20Cloud-Wan%202.1-00B8D9)](https://dashscope.aliyuncs.com/)
 [![Node](https://img.shields.io/badge/Node-%3E%3D18-3C873A)](https://nodejs.org/)
