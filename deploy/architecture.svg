@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1000" viewBox="0 0 1680 1000" font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#4f46e5"/>
+    </marker>
+    <marker id="arrowGray" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 z" fill="#64748b"/>
+    </marker>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#0f172a" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1680" height="1000" fill="#f6f7fb"/>
+
+  <!-- Title -->
+  <g>
+    <rect x="60" y="36" width="30" height="30" rx="7" fill="#4f46e5"/>
+    <path d="M69 44 v14 l11 -7 z" fill="#ffffff"/>
+    <text x="102" y="52" font-size="26" font-weight="700" fill="#0f172a">ReelWeaver</text>
+    <text x="102" y="74" font-size="15" fill="#5b6472">AI Showrunner — multi-agent brief-to-video pipeline on Alibaba Cloud &amp; Qwen Cloud</text>
+  </g>
+
+  <!-- ============ Column labels ============ -->
+  <text x="70"   y="128" font-size="13" font-weight="700" fill="#8a91a1" letter-spacing="1.2">CLIENT</text>
+  <text x="600"  y="128" font-size="13" font-weight="700" fill="#8a91a1" letter-spacing="1.2">BACKEND · ALIBABA CLOUD</text>
+  <text x="1250" y="128" font-size="13" font-weight="700" fill="#8a91a1" letter-spacing="1.2">QWEN CLOUD &amp; STORAGE</text>
+
+  <!-- ============ A: Client ============ -->
+  <rect x="60" y="150" width="440" height="470" rx="16" fill="#ffffff" stroke="#e6e8ee" filter="url(#sh)"/>
+  <text x="84" y="188" font-size="18" font-weight="700" fill="#0f172a">Browser</text>
+  <text x="84" y="210" font-size="13" fill="#5b6472">Single-page studio (HTML / CSS / JS)</text>
+
+  <rect x="84" y="234" width="392" height="92" rx="12" fill="#eef0fe" stroke="#c7ccf7"/>
+  <text x="104" y="266" font-size="16" font-weight="650" fill="#312e81">ReelWeaver Studio</text>
+  <text x="104" y="290" font-size="12.5" fill="#4b5563">Brief composer · live pipeline</text>
+  <text x="104" y="310" font-size="12.5" fill="#4b5563">Script · Storyboard · Video · Editor tabs</text>
+
+  <rect x="84" y="342" width="392" height="80" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="104" y="372" font-size="16" font-weight="650" fill="#0f172a">Premiere-style Timeline</text>
+  <text x="104" y="396" font-size="12.5" fill="#4b5563">Drag-and-drop reorder · live length/scenes/clips</text>
+
+  <rect x="84" y="438" width="392" height="80" rx="12" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="104" y="468" font-size="16" font-weight="650" fill="#0f172a">Edit Assistant (chat)</text>
+  <text x="104" y="492" font-size="12.5" fill="#4b5563">Natural-language edits: remove / move / trim / reorder</text>
+
+  <rect x="84" y="534" width="392" height="66" rx="12" fill="#ecfdf5" stroke="#bbf7d0"/>
+  <text x="104" y="562" font-size="15" font-weight="650" fill="#065f46">Download final video (one MP4)</text>
+  <text x="104" y="584" font-size="12.5" fill="#3f6212">Merged in timeline order</text>
+
+  <!-- ============ B: Backend ============ -->
+  <rect x="560" y="150" width="560" height="720" rx="16" fill="#ffffff" stroke="#e6e8ee" filter="url(#sh)"/>
+  <text x="584" y="188" font-size="18" font-weight="700" fill="#0f172a">Node.js Server</text>
+  <text x="584" y="210" font-size="13" fill="#5b6472">Function Compute (900s) · Render · OSS-ready</text>
+
+  <rect x="584" y="234" width="512" height="70" rx="12" fill="#eef0fe" stroke="#c7ccf7"/>
+  <text x="604" y="264" font-size="16" font-weight="650" fill="#312e81">HTTP + SSE Server (server.js)</text>
+  <text x="604" y="287" font-size="12.5" fill="#4b5563">/api/generate/stream · /api/export · /api/health</text>
+
+  <rect x="584" y="320" width="512" height="70" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="604" y="350" font-size="16" font-weight="650" fill="#0f172a">ReelWeaver Orchestrator</text>
+  <text x="604" y="373" font-size="12.5" fill="#4b5563">Coordinates agents · 30,000-token budget · schema-validated hand-offs</text>
+
+  <!-- Agents -->
+  <text x="584" y="424" font-size="12.5" font-weight="700" fill="#8a91a1" letter-spacing="0.8">FOUR SPECIALIZED AGENTS</text>
+  <rect x="584" y="436" width="250" height="72" rx="11" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="602" y="464" font-size="15" font-weight="650" fill="#0f172a">1 · Scriptwriter</text>
+  <text x="602" y="486" font-size="12" fill="#4b5563">Brief → screenplay</text>
+  <rect x="846" y="436" width="250" height="72" rx="11" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="864" y="464" font-size="15" font-weight="650" fill="#0f172a">2 · Storyboarder</text>
+  <text x="864" y="486" font-size="12" fill="#4b5563">Script → shot frames</text>
+  <rect x="584" y="518" width="250" height="72" rx="11" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="602" y="546" font-size="15" font-weight="650" fill="#0f172a">3 · Video Generator</text>
+  <text x="602" y="568" font-size="12" fill="#4b5563">Frames → video clips</text>
+  <rect x="846" y="518" width="250" height="72" rx="11" fill="#f8fafc" stroke="#e2e8f0"/>
+  <text x="864" y="546" font-size="15" font-weight="650" fill="#0f172a">4 · Editor</text>
+  <text x="864" y="568" font-size="12" fill="#4b5563">Clips → edit list</text>
+
+  <rect x="584" y="612" width="512" height="70" rx="12" fill="#fff7ed" stroke="#fed7aa"/>
+  <text x="604" y="642" font-size="15" font-weight="650" fill="#9a3412">ffmpeg export (bundled)</text>
+  <text x="604" y="664" font-size="12.5" fill="#7c2d12">Downloads ordered clips → concatenates → one MP4</text>
+
+  <rect x="584" y="694" width="512" height="66" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+  <text x="604" y="722" font-size="15" font-weight="650" fill="#0f172a">Zod schemas · token accounting · interruptible (Stop)</text>
+  <text x="604" y="744" font-size="12" fill="#4b5563">Tolerant JSON parsing for live model output</text>
+
+  <!-- ============ C: Qwen Cloud + Storage ============ -->
+  <rect x="1180" y="150" width="440" height="360" rx="16" fill="#ffffff" stroke="#e6e8ee" filter="url(#sh)"/>
+  <text x="1204" y="188" font-size="18" font-weight="700" fill="#0f172a">Qwen Cloud · DashScope</text>
+  <text x="1204" y="210" font-size="13" fill="#5b6472">OpenAI-compatible + native async APIs</text>
+
+  <rect x="1204" y="234" width="392" height="110" rx="12" fill="#eef0fe" stroke="#c7ccf7"/>
+  <text x="1224" y="266" font-size="16" font-weight="650" fill="#312e81">qwen-plus (LLM)</text>
+  <text x="1224" y="290" font-size="12.5" fill="#4b5563">Powers Scriptwriter, Storyboarder</text>
+  <text x="1224" y="310" font-size="12.5" fill="#4b5563">and Editor agents</text>
+  <text x="1224" y="330" font-size="12" fill="#6b7280">/compatible-mode/v1/chat/completions</text>
+
+  <rect x="1204" y="360" width="392" height="126" rx="12" fill="#f0f9ff" stroke="#bae6fd"/>
+  <text x="1224" y="392" font-size="16" font-weight="650" fill="#075985">Wan 2.1 (wan2.1-t2v-turbo)</text>
+  <text x="1224" y="416" font-size="12.5" fill="#4b5563">Text-to-video for the Video Generator</text>
+  <text x="1224" y="436" font-size="12.5" fill="#4b5563">Async: submit task → poll → clip URL</text>
+  <text x="1224" y="458" font-size="12" fill="#6b7280">/api/v1/services/aigc/video-generation</text>
+  <text x="1224" y="476" font-size="12" fill="#6b7280">9:16 vertical · 720p</text>
+
+  <rect x="1180" y="544" width="440" height="150" rx="16" fill="#ffffff" stroke="#e6e8ee" filter="url(#sh)"/>
+  <text x="1204" y="582" font-size="18" font-weight="700" fill="#0f172a">Alibaba Cloud OSS</text>
+  <text x="1204" y="604" font-size="13" fill="#5b6472">Object storage for rendered video</text>
+  <rect x="1204" y="620" width="392" height="54" rx="11" fill="#ecfdf5" stroke="#bbf7d0"/>
+  <text x="1224" y="653" font-size="14.5" font-weight="650" fill="#065f46">bucket: reelweaver-output · signed URLs</text>
+
+  <!-- ============ Arrows ============ -->
+  <!-- Client <-> Backend -->
+  <line x1="500" y1="270" x2="560" y2="270" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="507" y="262" font-size="12" fill="#4f46e5" font-weight="600">brief</text>
+
+  <line x1="560" y1="296" x2="500" y2="296" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowGray)" stroke-dasharray="6 4"/>
+  <text x="503" y="315" font-size="11.5" fill="#64748b">SSE stream</text>
+
+  <line x1="500" y1="566" x2="560" y2="646" stroke="#ea580c" stroke-width="2.5" marker-start="url(#arrowGray)"/>
+  <text x="378" y="624" font-size="11.5" fill="#9a3412">merged MP4 ← /api/export</text>
+
+  <!-- Backend <-> Qwen -->
+  <line x1="1096" y1="360" x2="1180" y2="290" stroke="#4f46e5" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="1104" y="322" font-size="12" fill="#4f46e5" font-weight="600">chat completions</text>
+
+  <line x1="1096" y1="554" x2="1180" y2="420" stroke="#0284c7" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="1104" y="512" font-size="12" fill="#0369a1" font-weight="600">Wan 2.1 submit → poll</text>
+
+  <line x1="1180" y1="452" x2="1100" y2="560" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowGray)" stroke-dasharray="6 4"/>
+  <text x="1092" y="600" font-size="11.5" fill="#64748b" text-anchor="end">clip URLs</text>
+
+  <!-- Backend -> OSS -->
+  <line x1="1096" y1="660" x2="1180" y2="620" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="1104" y="648" font-size="12" fill="#15803d" font-weight="600">store final video</text>
+
+  <!-- Footer -->
+  <text x="60" y="930" font-size="12.5" fill="#8a91a1">Data flow: creative brief → Scriptwriter → Storyboarder → Video Generator (Wan 2.1) → Editor → timeline → merged MP4. Progress streamed live over Server-Sent Events.</text>
+  <text x="60" y="954" font-size="12.5" fill="#8a91a1">Runs offline in Preview mode (no key). Live mode calls Qwen Cloud. Deployed on Alibaba Function Compute or Render; video stored in Alibaba Cloud OSS.</text>
+</svg>

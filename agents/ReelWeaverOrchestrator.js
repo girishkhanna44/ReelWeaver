@@ -73,7 +73,7 @@ class ReelWeaverOrchestrator {
     this.emit('videoGen', 'running');
     const videoResult = await this.videoGen.generateAllVideos(
       storyboard,
-      (p) => this.emit('videoGen', 'progress', { clip: p }),
+      (p) => this.emit('videoGen', 'progress', p),
       this.shouldStop
     );
     this.totalTokensUsed += videoResult.totalTokenCost;
@@ -145,7 +145,10 @@ class ReelWeaverOrchestrator {
     // Stage 3: Video Gen (simulated)
     console.log('[Stage 3/4] Generating videos (simulated)...');
     this.emit('videoGen', 'running');
-    const videoResult = await this.simulateVideoGeneration(storyboard);
+    const videoResult = await this.simulateVideoGeneration(
+      storyboard,
+      (p) => this.emit('videoGen', 'progress', p)
+    );
     this.totalTokensUsed += videoResult.totalTokenCost;
     this.emit('videoGen', 'done', { videoResult, tokens: videoResult.totalTokenCost });
 
@@ -191,17 +194,32 @@ class ReelWeaverOrchestrator {
     return output;
   }
 
-  async simulateVideoGeneration(storyboard) {
-    const clips = storyboard.frames.map(f => ({
-      sceneNumber: f.sceneNumber,
-      frameNumber: f.frameNumber,
-      videoUrl: `https://qwen-cloud.example.com/videos/${this.projectId}_s${f.sceneNumber}_f${f.frameNumber}.mp4`,
-      localPath: null,
-      prompt: f.prompt,
-      duration: f.duration,
-      status: 'completed',
-      tokenCost: Math.floor(f.prompt.length / 4) + 200,
-    }));
+  async simulateVideoGeneration(storyboard, onProgress) {
+    const frames = storyboard.frames;
+    const total = frames.length;
+    const clips = [];
+    for (let i = 0; i < total; i++) {
+      const f = frames[i];
+      if (typeof onProgress === 'function') {
+        onProgress({ type: 'generating', index: i + 1, total, sceneNumber: f.sceneNumber, frameNumber: f.frameNumber });
+      }
+      // Small delay so the studio shows clips appearing one by one, like a real render.
+      await new Promise(r => setTimeout(r, 120));
+      const clip = {
+        sceneNumber: f.sceneNumber,
+        frameNumber: f.frameNumber,
+        videoUrl: `https://qwen-cloud.example.com/videos/${this.projectId}_s${f.sceneNumber}_f${f.frameNumber}.mp4`,
+        localPath: null,
+        prompt: f.prompt,
+        duration: f.duration,
+        status: 'completed',
+        tokenCost: Math.floor(f.prompt.length / 4) + 200,
+      };
+      clips.push(clip);
+      if (typeof onProgress === 'function') {
+        onProgress({ type: 'clip', index: i + 1, total, clip });
+      }
+    }
 
     return {
       storyboardId: `sb_${this.projectId}`,

@@ -22,6 +22,7 @@ const path = require('path');
 const crypto = require('crypto');
 const ReelWeaverOrchestrator = require('./agents/ReelWeaverOrchestrator');
 const config = require('./config/qwen');
+const { stitchClips } = require('./tools/video-stitch');
 
 const PORT = process.env.PORT || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'ui', 'public');
@@ -228,6 +229,35 @@ const server = http.createServer(async (req, res) => {
 
     if (urlPath === '/api/sample-brief' && method === 'GET') {
       return sendJson(res, 200, SAMPLE_BRIEF);
+    }
+
+    // Merge the ordered clips into ONE downloadable MP4 (bundled ffmpeg).
+    if (urlPath === '/api/export' && method === 'POST') {
+      const body = await readBody(req);
+      const clips = (Array.isArray(body.clips) ? body.clips : [])
+        .filter(u => typeof u === 'string' && /^https?:\/\//.test(u) && !/example\.com/.test(u));
+      if (!clips.length) {
+        return sendJson(res, 400, { ok: false, error: 'No downloadable clips to merge. Render the video first.' });
+      }
+      let result;
+      try {
+        result = await stitchClips(clips);
+      } catch (err) {
+        console.error('[ReelWeaver] export failed:', err.message);
+        return sendJson(res, 500, { ok: false, error: 'Could not merge clips: ' + err.message });
+      }
+      const name = (body.title || 'reelweaver').toString().replace(/[^\w.-]+/g, '_').slice(0, 60) || 'reelweaver';
+      const stat = fs.statSync(result.outputPath);
+      res.writeHead(200, {
+        'Content-Type': 'video/mp4',
+        'Content-Length': stat.size,
+        'Content-Disposition': `attachment; filename="${name}.mp4"`,
+      });
+      const stream = fs.createReadStream(result.outputPath);
+      stream.pipe(res);
+      stream.on('close', result.cleanup);
+      stream.on('error', () => { try { res.destroy(); } catch (_) {} result.cleanup(); });
+      return;
     }
 
     if (urlPath === '/api/generate' && method === 'POST') {

@@ -134,7 +134,7 @@ Return JSON array matching this structure:
       };
 
       if (typeof onProgress === 'function') {
-        onProgress({ index, total, sceneNumber: clip.sceneNumber, frameNumber: clip.frameNumber, status: 'generating' });
+        onProgress({ type: 'generating', index, total, sceneNumber: clip.sceneNumber, frameNumber: clip.frameNumber });
       }
 
       try {
@@ -144,14 +144,18 @@ Return JSON array matching this structure:
           clips.push({ ...clip, status: 'failed', error: 'stopped by user' });
           break;
         }
-        clips.push({
+        const finished = {
           ...clip,
           videoUrl: videoResult.videoUrl,
           localPath: videoResult.localPath,
           status: videoResult.status,
           taskId: videoResult.taskId,
           tokenCost: videoResult.tokenCost,
-        });
+        };
+        clips.push(finished);
+        if (typeof onProgress === 'function') {
+          onProgress({ type: 'clip', index, total, clip: finished });
+        }
       } catch (error) {
         clips.push({
           ...clip,

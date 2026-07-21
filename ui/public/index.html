@@ -85,10 +85,37 @@
 
   /* ---------- Workspace ---------- */
   .workspace {
-    display: grid; grid-template-columns: 380px 1fr; gap: 0;
+    display: grid; grid-template-columns: 360px minmax(0, 1fr) 340px; gap: 0;
     height: calc(100vh - 60px); min-height: 0;
   }
-  @media (max-width: 900px) { .workspace { grid-template-columns: 1fr; height: auto; } }
+  @media (max-width: 1180px) {
+    .workspace { grid-template-columns: 330px minmax(0, 1fr); }
+    .chatpane { grid-column: 1 / -1; height: 340px; border-left: none; border-top: 1px solid var(--border); }
+  }
+  @media (max-width: 900px) {
+    .workspace { grid-template-columns: 1fr; height: auto; }
+    .composer, .chatpane { height: auto; }
+  }
+
+  /* ---------- Chat / edit assistant pane ---------- */
+  .chatpane { border-left: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+  .chat-head { padding: 15px 18px; border-bottom: 1px solid var(--border); }
+  .chat-head h2 { margin: 0; font-size: 13.5px; display: flex; align-items: center; gap: 8px; }
+  .chat-head .dot2 { width: 7px; height: 7px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px rgba(22,163,74,0.15); }
+  .chat-head p { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
+  .chat-log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 11px; }
+  .msg { max-width: 92%; font-size: 12.5px; line-height: 1.5; padding: 9px 12px; border-radius: 13px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
+  .msg.bot { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); border-bottom-left-radius: 4px; }
+  .msg.bot b { font-weight: 650; }
+  .chat-suggest { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px; }
+  .chip-btn { font-size: 11px; border: 1px solid var(--border-2); background: var(--surface); color: var(--muted); padding: 5px 10px; border-radius: 999px; cursor: pointer; transition: 0.15s; }
+  .chip-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .chat-input { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--border); }
+  .chat-input textarea { flex: 1; resize: none; height: 38px; max-height: 120px; border: 1px solid var(--border-2); border-radius: 9px; padding: 9px 11px; font-family: var(--font); font-size: 13px; color: var(--text); background: var(--surface); }
+  .chat-input textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .chat-input button { border: none; background: var(--accent); color: #fff; width: 40px; border-radius: 9px; cursor: pointer; display: grid; place-items: center; flex: none; }
+  .chat-input button:hover { background: var(--accent-2); }
 
   /* ---------- Composer ---------- */
   .composer {
@@ -152,8 +179,8 @@
     background: var(--surface); transition: 0.2s; flex: none;
   }
   .step .lbl { font-size: 12.5px; color: var(--muted); font-weight: 500; white-space: nowrap; }
-  .step .connector { width: 34px; height: 1.5px; background: var(--border-2); margin: 0 12px; }
-  @media (max-width: 560px) { .step .lbl { display: none; } .step .connector { width: 16px; margin: 0 6px; } }
+  .steps .connector { width: 30px; height: 1.5px; background: var(--border-2); margin: 0 12px; flex: none; }
+  @media (max-width: 560px) { .step .lbl { display: none; } .steps .connector { width: 14px; margin: 0 6px; } }
   .step.running .bubble { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 0 4px var(--accent-ring); }
   .step.running .lbl { color: var(--text); }
   .step.done .bubble { border-color: var(--good); background: var(--good); color: #fff; }
@@ -412,6 +439,27 @@
         <span>Short-form video studio</span>
       </footer>
     </div>
+
+    <!-- Edit assistant -->
+    <aside class="chatpane">
+      <div class="chat-head">
+        <h2><span class="dot2"></span>Edit assistant</h2>
+        <p>Tell me how to change your cut in plain English.</p>
+      </div>
+      <div class="chat-log" id="chatLog"></div>
+      <div class="chat-suggest" id="chatSuggest">
+        <button class="chip-btn" type="button">Remove clip 2</button>
+        <button class="chip-btn" type="button">Trim to 10 seconds</button>
+        <button class="chip-btn" type="button">Reverse the order</button>
+        <button class="chip-btn" type="button">Move clip 3 to start</button>
+      </div>
+      <form class="chat-input" id="chatForm">
+        <textarea id="chatInput" placeholder="e.g. remove clip 2, trim to 12s, move clip 4 to the start…" rows="1"></textarea>
+        <button type="submit" title="Send" aria-label="Send">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </button>
+      </form>
+    </aside>
   </div>
 
   <div id="toasts" aria-live="polite"></div>
@@ -533,16 +581,60 @@
       mode: mode,
     };
   }
-  async function loadSample() {
-    try {
-      const b = await fetch("/api/sample-brief").then(r => r.json());
-      $("#title").value = b.title; $("#genre").value = b.genre; $("#tone").value = b.tone;
-      $("#logline").value = b.logline; $("#durationSeconds").value = b.durationSeconds;
-      $("#characters").value = (b.characters || []).map(c => c.name + ": " + c.description).join("\n");
-      $("#keyBeats").value = (b.keyBeats || []).join("\n");
-      $("#constraints").value = (b.constraints || []).join("\n");
-      toast("Sample brief loaded", "ok");
-    } catch (e) { toast("Couldn't load sample", "err"); }
+  const SAMPLES = [
+    {
+      title: "The Last Message", genre: "Sci-Fi Thriller", tone: "Tense, claustrophobic, emotional", durationSeconds: 15,
+      logline: "A deep-space pilot receives a final message from Earth — sent 40 years ago.",
+      characters: [{ name: "Commander Mara Voss", description: "a weathered pilot haunted by the family she left behind" }, { name: "Echo", description: "the ship's calm AI companion" }],
+      keyBeats: ["A routine patrol is broken by an ancient signal", "The message is from her daughter, now older than she is", "Time dilation reveal", "An impossible final choice"],
+      constraints: ["Vertical 9:16 format", "Hook in first 3 seconds", "Cliffhanger ending"],
+    },
+    {
+      title: "The Island Enchantress", genre: "Fantasy", tone: "Whimsical, magical, warm, uplifting", durationSeconds: 18,
+      logline: "A radiant island princess discovers her song can awaken the magic of the sea.",
+      characters: [{ name: "Princess Marisol", description: "a kind-hearted island princess with a flower crown and a shimmering gown" }, { name: "Coral", description: "a playful glowing sea-spirit companion" }],
+      keyBeats: ["She sings on a sunlit beach as flowers bloom", "The sea glows and parts into a path of light", "Sea creatures rise to dance with her", "A radiant wave of magic sweeps the shore"],
+      constraints: ["Vertical 9:16 format", "Bright, colorful, family-friendly", "Uplifting orchestral mood"],
+    },
+    {
+      title: "Signal at 3 A.M.", genre: "Horror", tone: "Dread, isolation, cold", durationSeconds: 15,
+      logline: "A night-shift radio operator hears her own voice calling for help on a dead frequency.",
+      characters: [{ name: "Devi", description: "an exhausted overnight radio operator" }],
+      keyBeats: ["Static resolves into a familiar voice", "The voice knows things only she knows", "She realizes it is coming from inside the station"],
+      constraints: ["Vertical 9:16 format", "Hook in first 3 seconds", "Single location", "Cliffhanger ending"],
+    },
+    {
+      title: "Bloom", genre: "Romance", tone: "Warm, bittersweet, tender", durationSeconds: 18,
+      logline: "Two rival florists fall for each other through anonymous bouquets left on a doorstep.",
+      characters: [{ name: "Noor", description: "a shy florist with a failing shop" }, { name: "Sam", description: "the confident florist across the street" }],
+      keyBeats: ["A mysterious bouquet appears at dawn", "Notes are exchanged through flowers", "They realize they are rivals", "A choice between pride and love"],
+      constraints: ["Vertical 9:16 format", "Golden-hour palette", "Feel-good ending"],
+    },
+    {
+      title: "Last Order", genre: "Crime Noir", tone: "Rain-soaked, fatalistic, tense", durationSeconds: 15,
+      logline: "A late-night diner cook recognizes the fugitive at table six as the brother he testified against.",
+      characters: [{ name: "Marco", description: "a guarded diner cook with a hidden past" }, { name: "Denny", description: "his estranged brother, now on the run" }],
+      keyBeats: ["A stranger sits at the counter", "Recognition across the steam", "An unspoken threat over coffee", "A door left open"],
+      constraints: ["Vertical 9:16 format", "Neon and shadow", "Hook in first 3 seconds"],
+    },
+    {
+      title: "The Understudy", genre: "Psychological Drama", tone: "Obsessive, glamorous, unsettling", durationSeconds: 18,
+      logline: "A ballet understudy realizes the prima ballerina she is replacing never existed.",
+      characters: [{ name: "Lena", description: "a driven, unraveling understudy" }],
+      keyBeats: ["She prepares to take the lead role", "No one remembers the star she is replacing", "Her reflection moves on its own", "The stage lights find her"],
+      constraints: ["Vertical 9:16 format", "Mirror motifs", "Ambiguous ending"],
+    },
+  ];
+  let sampleIdx = -1;
+  function loadSample() {
+    sampleIdx = (sampleIdx + 1) % SAMPLES.length;
+    const b = SAMPLES[sampleIdx];
+    $("#title").value = b.title; $("#genre").value = b.genre; $("#tone").value = b.tone;
+    $("#logline").value = b.logline; $("#durationSeconds").value = b.durationSeconds;
+    $("#characters").value = (b.characters || []).map(c => c.name + ": " + c.description).join("\n");
+    $("#keyBeats").value = (b.keyBeats || []).join("\n");
+    $("#constraints").value = (b.constraints || []).join("\n");
+    toast("Loaded “" + b.title + "”", "ok");
   }
   function newProject() {
     $$("#briefForm input, #briefForm textarea").forEach(i => { if (i.type !== "number") i.value = ""; });
@@ -558,7 +650,7 @@
 
   /* ---------- Renderers ---------- */
   function renderScript(script) {
-    if (!script) return;
+    if (!script || !Array.isArray(script.scenes) || !script.scenes.length) return;
     $("#emptyScript").style.display = "none";
     const out = $("#scriptOut"); out.innerHTML = "";
     (script.scenes || []).forEach(sc => {
@@ -570,7 +662,7 @@
     });
   }
   function renderStoryboard(sb) {
-    if (!sb) return;
+    if (!sb || !Array.isArray(sb.frames) || !sb.frames.length) return;
     $("#emptyStory").style.display = "none";
     const out = $("#framesOut"); out.hidden = false; out.innerHTML = "";
     (sb.frames || []).forEach((f, i) => {
@@ -591,20 +683,34 @@
       out.appendChild(d);
     });
   }
-  function renderClips(vr) {
-    if (!vr) return;
+  function clipCardHTML(c) {
+    const playable = c.status === "completed" && c.videoUrl && !/example\.com/.test(c.videoUrl);
+    const media = playable
+      ? '<video src="' + esc(c.videoUrl) + '" controls preload="metadata"></video>'
+      : '<div class="ph"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg><span>' + (c.status === "completed" ? "Preview clip" : esc(c.status)) + '</span></div>';
+    const dl = playable ? '<a href="' + esc(c.videoUrl) + '" download>Download</a>' : "";
+    return media + '<div class="cmeta"><span class="st ' + esc(c.status) + '"></span>Scene ' + c.sceneNumber + " · Frame " + c.frameNumber + dl + "</div>";
+  }
+  // Start the Video tab for streaming: clear and reveal it.
+  function beginVideoTab() {
     $("#emptyVideo").style.display = "none";
     const out = $("#clipsOut"); out.hidden = false; out.innerHTML = "";
-    (vr.clips || []).forEach(c => {
-      const playable = c.status === "completed" && c.videoUrl && !/example\.com/.test(c.videoUrl);
-      const d = document.createElement("div"); d.className = "clip";
-      const media = playable
-        ? '<video src="' + esc(c.videoUrl) + '" controls preload="metadata"></video>'
-        : '<div class="ph"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg><span>' + (c.status === "completed" ? "Preview clip" : esc(c.status)) + '</span></div>';
-      const dl = playable ? '<a href="' + esc(c.videoUrl) + '" download>Download</a>' : "";
-      d.innerHTML = media + '<div class="cmeta"><span class="st ' + esc(c.status) + '"></span>Scene ' + c.sceneNumber + " · Frame " + c.frameNumber + dl + "</div>";
-      out.appendChild(d);
-    });
+  }
+  // Append one clip card as it finishes rendering.
+  function appendClip(c) {
+    if (!c) return;
+    $("#emptyVideo").style.display = "none";
+    const out = $("#clipsOut"); out.hidden = false;
+    const d = document.createElement("div"); d.className = "clip"; d.dataset.key = c.sceneNumber + "-" + c.frameNumber;
+    d.innerHTML = clipCardHTML(c);
+    out.appendChild(d);
+  }
+  // Full render (used at final result) — replaces whatever streamed in.
+  function renderClips(vr) {
+    if (!vr || !Array.isArray(vr.clips) || !vr.clips.length) return;
+    beginVideoTab();
+    const out = $("#clipsOut");
+    vr.clips.forEach(c => { const d = document.createElement("div"); d.className = "clip"; d.innerHTML = clipCardHTML(c); out.appendChild(d); });
   }
   // ---- Premiere-style editor with a draggable timeline ----
   let editorResult = null;
@@ -727,16 +833,44 @@
     v.onended = () => { i++; if (i < playable.length) { v.src = playable[i].videoUrl; v.play(); } };
   }
 
-  function downloadCut() {
+  // Merge the timeline into ONE MP4 on the server (bundled ffmpeg), in timeline order.
+  async function downloadCut() {
     const playable = editorTimeline.filter(isPlayable);
     if (!playable.length) return;
-    playable.forEach((c, i) => {
-      const a = document.createElement("a");
-      a.href = c.videoUrl;
-      a.download = (editorResult.title || "reelweaver").replace(/\s+/g, "_") + "_" + String(i + 1).padStart(2, "0") + ".mp4";
-      document.body.appendChild(a); a.click(); a.remove();
-    });
-    toast(playable.length > 1 ? "Downloading " + playable.length + " clips in order" : "Downloading video", "ok");
+    const btn = $("#dlBtn");
+    const orig = btn ? btn.innerHTML : "";
+    if (btn) { btn.disabled = true; btn.innerHTML = ICON.download + " Merging…"; }
+    toast("Merging " + playable.length + " clip" + (playable.length > 1 ? "s" : "") + " into one video…", "info");
+    try {
+      const res = await fetch("/api/export", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clips: playable.map(c => c.videoUrl), title: editorResult.title || "reelweaver" }),
+      });
+      const ct = res.headers.get("content-type") || "";
+      if (res.ok && ct.includes("video")) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = (editorResult.title || "reelweaver").replace(/\s+/g, "_") + ".mp4";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        toast("Downloaded the full video", "ok");
+      } else {
+        const info = await res.json().catch(() => ({}));
+        throw new Error(info.error || "Merge failed");
+      }
+    } catch (err) {
+      // Fallback: download the clips individually, in order.
+      playable.forEach((c, i) => {
+        const a = document.createElement("a");
+        a.href = c.videoUrl;
+        a.download = (editorResult.title || "reelweaver").replace(/\s+/g, "_") + "_" + String(i + 1).padStart(2, "0") + ".mp4";
+        document.body.appendChild(a); a.click(); a.remove();
+      });
+      toast("Couldn't merge on the server — downloaded clips individually instead", "err");
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = orig; }
+    }
   }
 
   /* ---------- Run ---------- */
@@ -791,9 +925,14 @@
     if (ev.stage === "job") { jobId = ev.jobId; return; }
     if (ev.tokensUsed != null) setProgress(ev.tokensUsed, ev.tokenBudget);
 
-    if (ev.stage === "videoGen" && ev.status === "progress" && ev.clip) {
-      $("#progLab").textContent = "Rendering clip " + ev.clip.index + " of " + ev.clip.total;
+    if (ev.stage === "videoGen" && ev.status === "progress") {
       setStep("videoGen", "running"); tabStatus("videoGen", "s-run");
+      if (ev.type === "generating") {
+        $("#progLab").textContent = "Rendering clip " + ev.index + " of " + ev.total;
+      } else if (ev.type === "clip" && ev.clip) {
+        appendClip(ev.clip);
+        showTab("video");
+      }
       return;
     }
 
@@ -801,6 +940,8 @@
       if (ev.status === "running") {
         setStep(ev.stage, "running"); tabStatus(ev.stage, "s-run");
         $("#progLab").textContent = { scriptwriting: "Writing script…", storyboarding: "Boarding shots…", videoGen: "Generating video…", editing: "Editing cut…" }[ev.stage] || "Working…";
+        // Prepare the Video tab so clips can stream in one by one.
+        if (ev.stage === "videoGen") { beginVideoTab(); showTab("video"); }
       } else if (ev.status === "done") {
         setStep(ev.stage, "done"); tabStatus(ev.stage, "s-done");
         // Populate + reveal the matching tab as each stage finishes.
@@ -816,6 +957,7 @@
       renderScript(ev.result.script); renderStoryboard(ev.result.storyboard);
       renderClips(ev.result.videoResult); renderEditor(ev.result);
       showTab("editor");
+      chatGreet();
       toast("Video ready", "ok");
       return;
     }
@@ -849,6 +991,81 @@
   document.addEventListener("keydown", (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); run(); }
   });
+
+  /* ---------- Edit assistant (chat) ---------- */
+  function chatSay(role, html) {
+    const log = $("#chatLog");
+    const d = document.createElement("div"); d.className = "msg " + role; d.innerHTML = html;
+    log.appendChild(d); log.scrollTop = log.scrollHeight;
+  }
+  function refreshEditor() {
+    if (!$("#track")) return;
+    renderTimeline(); renderPlayer(); showTab("editor");
+  }
+  function runEditCommand(text) {
+    const s = text.toLowerCase().trim();
+    const valid = (i) => i >= 0 && i < editorTimeline.length;
+    const range = () => "That clip number is out of range (1–" + editorTimeline.length + ").";
+    let m;
+
+    if (/^(help|what can|how)/.test(s))
+      return "I can edit your cut. Try:<br>• <b>remove clip 2</b><br>• <b>move clip 3 to start</b><br>• <b>trim to 12 seconds</b><br>• <b>reverse the order</b><br>• <b>swap 1 and 3</b><br>• <b>reset</b> · <b>play</b> · <b>download</b>";
+    if (!editorResult) return "Generate a video first, then I can reorder, trim, and cut it for you.";
+
+    if (/\b(download|export|save)\b/.test(s)) { downloadCut(); return "Merging your timeline into a single video…"; }
+    if (/\b(play|preview)\b/.test(s)) { playSequence(); showTab("editor"); return "Playing the sequence in timeline order."; }
+    if (/\b(reset|restore|original|start over)\b/.test(s)) { editorTimeline = (editorResult.videoResult.clips || []).slice(); refreshEditor(); return "Restored the original order (" + editorTimeline.length + " clips)."; }
+    if (/\breverse\b/.test(s)) { editorTimeline.reverse(); refreshEditor(); return "Reversed the clip order."; }
+
+    m = s.match(/(?:trim|shorten|cut|make it|keep it|limit).*?(\d+)\s*(?:s|sec|secs|second|seconds)/);
+    if (m) {
+      const target = parseInt(m[1], 10); let total = 0; const kept = [];
+      for (const c of editorTimeline) { if (total + (c.duration || 0) <= target) { kept.push(c); total += c.duration || 0; } else break; }
+      if (!kept.length && editorTimeline.length) { kept.push(editorTimeline[0]); total = editorTimeline[0].duration || 0; }
+      editorTimeline = kept; refreshEditor();
+      return "Trimmed to ~" + total + "s (" + editorTimeline.length + " clip" + (editorTimeline.length > 1 ? "s" : "") + ").";
+    }
+    m = s.match(/swap\s+(?:clip\s*)?(\d+)\s+(?:and|with|&)\s+(?:clip\s*)?(\d+)/);
+    if (m) { const a = +m[1] - 1, b = +m[2] - 1; if (!valid(a) || !valid(b)) return range(); const t = editorTimeline[a]; editorTimeline[a] = editorTimeline[b]; editorTimeline[b] = t; refreshEditor(); return "Swapped clip " + (a + 1) + " and clip " + (b + 1) + "."; }
+    m = s.match(/move\s+(?:clip\s*)?(\d+)\s+to\s+(?:the\s+)?(start|beginning|front|end|last|(?:position\s*)?(\d+))/);
+    if (m) {
+      const from = +m[1] - 1; if (!valid(from)) return range();
+      let to; const dest = m[2];
+      if (/start|beginning|front/.test(dest)) to = 0;
+      else if (/end|last/.test(dest)) to = editorTimeline.length - 1;
+      else to = parseInt(m[3] || dest, 10) - 1;
+      to = Math.max(0, Math.min(editorTimeline.length - 1, to));
+      const item = editorTimeline.splice(from, 1)[0]; editorTimeline.splice(to, 0, item); refreshEditor();
+      return "Moved clip " + (from + 1) + " to position " + (to + 1) + ".";
+    }
+    m = s.match(/(?:remove|delete|drop|cut|kill)\s+(?:clip\s*)?(\d+)/);
+    if (m) { const i = +m[1] - 1; if (!valid(i)) return range(); const c = editorTimeline.splice(i, 1)[0]; refreshEditor(); return "Removed clip " + (i + 1) + " (Scene " + c.sceneNumber + "). " + editorTimeline.length + " clip" + (editorTimeline.length === 1 ? "" : "s") + " left."; }
+    m = s.match(/keep only scene\s*(\d+)/); if (m) { const sc = +m[1]; editorTimeline = editorTimeline.filter(c => c.sceneNumber === sc); refreshEditor(); return "Kept only Scene " + sc + " (" + editorTimeline.length + " clips)."; }
+    m = s.match(/remove scene\s*(\d+)/); if (m) { const sc = +m[1]; const before = editorTimeline.length; editorTimeline = editorTimeline.filter(c => c.sceneNumber !== sc); refreshEditor(); return "Removed Scene " + sc + " (" + (before - editorTimeline.length) + " clips)."; }
+    m = s.match(/duplicate\s+(?:clip\s*)?(\d+)/); if (m) { const i = +m[1] - 1; if (!valid(i)) return range(); editorTimeline.splice(i + 1, 0, Object.assign({}, editorTimeline[i])); refreshEditor(); return "Duplicated clip " + (i + 1) + "."; }
+
+    if (/\b(script|rewrite|story|dialogue|plot)\b/.test(s))
+      return "To change the <b>script</b>, edit the brief on the left (logline, beats, characters) and hit <b>Generate</b> again — I'll re-write and re-board it.";
+    if (/\b(replace|regenerate|re-generate|redo|new footage|different clip)\b/.test(s))
+      return "Regenerating an individual clip needs a fresh render. Remove the clip and I'll re-cut around it, or tweak the brief and re-generate in <b>Full render</b> mode.";
+    if (/\b(longer|extend|add more|more clips)\b/.test(s))
+      return "I can't invent new footage here — raise the <b>Length</b> in the brief and re-generate for more shots.";
+
+    return "I didn't catch an edit there. Try <b>remove clip 2</b>, <b>trim to 12s</b>, <b>move clip 3 to start</b>, <b>reverse</b>, or <b>reset</b>.";
+  }
+  function handleChat(text) {
+    const t = (text || "").trim(); if (!t) return;
+    chatSay("user", esc(t));
+    setTimeout(() => chatSay("bot", runEditCommand(t)), 120);
+  }
+  function chatGreet() {
+    if ($("#chatLog").children.length) return;
+    chatSay("bot", "Your cut is ready. Tell me what to change — e.g. <b>remove clip 2</b>, <b>trim to 12 seconds</b>, or <b>move clip 3 to the start</b>.");
+  }
+  $("#chatForm").addEventListener("submit", (e) => { e.preventDefault(); const v = $("#chatInput").value; $("#chatInput").value = ""; handleChat(v); });
+  $("#chatInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("#chatForm").requestSubmit(); } });
+  $$("#chatSuggest .chip-btn").forEach(b => b.addEventListener("click", () => handleChat(b.textContent)));
+  chatSay("bot", "Hi! I'm your edit assistant. Generate a video, then ask me to reorder, trim, or cut it.");
 
   // Prefill so the studio isn't empty on first load.
   loadSample();
