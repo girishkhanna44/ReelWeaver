@@ -196,7 +196,7 @@ CMD ["node", "demo.js"]
 
 ## 📹 Demo Video
 
-[Watch 3-minute demo on YouTube](https://youtube.com/watch?v=DEMO_VIDEO_ID)
+[Watch 3-minute demo on YouTube](https://youtu.be/Bal7phr4iD8)
 
 Shows:
 1. Creative brief input
