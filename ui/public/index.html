@@ -448,10 +448,10 @@
       </div>
       <div class="chat-log" id="chatLog"></div>
       <div class="chat-suggest" id="chatSuggest">
-        <button class="chip-btn" type="button">Remove clip 2</button>
+        <button class="chip-btn" type="button">Add a clip of a sunrise over the ocean</button>
+        <button class="chip-btn" type="button">Replace clip 2 with a lightning storm</button>
         <button class="chip-btn" type="button">Trim to 10 seconds</button>
-        <button class="chip-btn" type="button">Reverse the order</button>
-        <button class="chip-btn" type="button">Move clip 3 to start</button>
+        <button class="chip-btn" type="button">Change the script to a heist gone wrong</button>
       </div>
       <form class="chat-input" id="chatForm">
         <textarea id="chatInput" placeholder="e.g. remove clip 2, trim to 12s, move clip 4 to the start…" rows="1"></textarea>
@@ -1002,15 +1002,70 @@
     if (!$("#track")) return;
     renderTimeline(); renderPlayer(); showTab("editor");
   }
-  function runEditCommand(text) {
+  function maxScene() { return editorTimeline.reduce((mx, c) => Math.max(mx, c.sceneNumber || 0), 0); }
+  async function generateClip(prompt) {
+    const res = await fetch("/api/clip", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt, mode, duration: 5, sceneNumber: maxScene() + 1, frameNumber: editorTimeline.length + 1 }),
+    });
+    const j = await res.json();
+    if (!j.ok) throw new Error(j.error || "generation failed");
+    return j.clip;
+  }
+  const isPreviewClip = (c) => !c || !c.videoUrl || /example\.com/.test(c.videoUrl);
+
+  async function runEditCommand(text) {
     const s = text.toLowerCase().trim();
     const valid = (i) => i >= 0 && i < editorTimeline.length;
     const range = () => "That clip number is out of range (1–" + editorTimeline.length + ").";
     let m;
 
     if (/^(help|what can|how)/.test(s))
-      return "I can edit your cut. Try:<br>• <b>remove clip 2</b><br>• <b>move clip 3 to start</b><br>• <b>trim to 12 seconds</b><br>• <b>reverse the order</b><br>• <b>swap 1 and 3</b><br>• <b>reset</b> · <b>play</b> · <b>download</b>";
-    if (!editorResult) return "Generate a video first, then I can reorder, trim, and cut it for you.";
+      return "I can build and edit your cut. Try:<br>• <b>add a clip of a city at night</b><br>• <b>replace clip 2 with a storm</b><br>• <b>trim to 12 seconds</b><br>• <b>change the script to a heist</b><br>• <b>remove / move / reverse / reset</b>";
+
+    // --- Generative commands (work even before/with an existing cut) ---
+    // Change the script / story → update the brief and regenerate everything.
+    m = text.match(/(?:change|rewrite|update|set)\s+(?:the\s+)?(?:script|story|logline|plot|premise)\s*(?:to|:|about|into)?\s*(.+)/i)
+      || text.match(/make (?:it|the story|this) (?:about|into) (.+)/i);
+    if (m && m[1].trim().length > 2) {
+      const desc = m[1].trim();
+      $("#logline").value = desc;
+      chatSay("bot", "Rewriting the script and regenerating from: “" + esc(desc) + "”…");
+      run();
+      return null;
+    }
+    // Change the title.
+    m = text.match(/(?:change|set|rename)\s+(?:the\s+)?title\s+(?:to|:)\s*(.+)/i);
+    if (m) { $("#title").value = m[1].trim(); return "Title set to “" + esc(m[1].trim()) + "”. Hit <b>Generate</b> to render it."; }
+
+    if (!editorResult) return "Generate a video first — then I can add, replace, reorder, or trim clips. (Or say “change the script to …”.)";
+
+    // Replace clip N with <description> → regenerate that clip.
+    m = text.match(/replace\s+(?:clip\s*)?(\d+)\s+(?:with|for|by)\s+(.+)/i);
+    if (m) {
+      const i = +m[1] - 1; if (!valid(i)) return range();
+      const desc = m[2].trim();
+      chatSay("bot", "Regenerating clip " + (i + 1) + " as “" + esc(desc) + "”…");
+      try {
+        const clip = await generateClip(desc);
+        clip.sceneNumber = editorTimeline[i].sceneNumber; clip.frameNumber = editorTimeline[i].frameNumber;
+        editorTimeline[i] = clip; refreshEditor();
+        return "Replaced clip " + (i + 1) + "." + (isPreviewClip(clip) ? " (preview placeholder — use Full render for real footage)" : "");
+      } catch (e) { return "Couldn't regenerate that clip: " + e.message; }
+    }
+    // Add a new clip of <description>.
+    m = text.match(/(?:add|insert|append|generate|create|make)\s+(?:a\s+|an\s+|another\s+|new\s+)*(?:clip|shot|video|scene)?\s*(?:of|showing|with|about|featuring|:)?\s*(.+)/i);
+    if (m && /\b(add|insert|append|generate|create|make)\b/i.test(s)) {
+      const desc = m[1].trim();
+      if (desc.length < 3 || /^(more|another|clips?|shots?|videos?)$/i.test(desc))
+        return "What should the new clip show? e.g. <b>add a clip of a sunrise over the ocean</b>.";
+      chatSay("bot", "Generating a new clip: “" + esc(desc) + "”…");
+      try {
+        const clip = await generateClip(desc);
+        editorTimeline.push(clip); refreshEditor();
+        return "Added a new clip" + (isPreviewClip(clip) ? " (preview placeholder)" : "") + ". Timeline is now " + editorTimeline.length + " clips.";
+      } catch (e) { return "Couldn't generate that clip: " + e.message; }
+    }
 
     if (/\b(download|export|save)\b/.test(s)) { downloadCut(); return "Merging your timeline into a single video…"; }
     if (/\b(play|preview)\b/.test(s)) { playSequence(); showTab("editor"); return "Playing the sequence in timeline order."; }
@@ -1045,18 +1100,23 @@
     m = s.match(/duplicate\s+(?:clip\s*)?(\d+)/); if (m) { const i = +m[1] - 1; if (!valid(i)) return range(); editorTimeline.splice(i + 1, 0, Object.assign({}, editorTimeline[i])); refreshEditor(); return "Duplicated clip " + (i + 1) + "."; }
 
     if (/\b(script|rewrite|story|dialogue|plot)\b/.test(s))
-      return "To change the <b>script</b>, edit the brief on the left (logline, beats, characters) and hit <b>Generate</b> again — I'll re-write and re-board it.";
-    if (/\b(replace|regenerate|re-generate|redo|new footage|different clip)\b/.test(s))
-      return "Regenerating an individual clip needs a fresh render. Remove the clip and I'll re-cut around it, or tweak the brief and re-generate in <b>Full render</b> mode.";
-    if (/\b(longer|extend|add more|more clips)\b/.test(s))
-      return "I can't invent new footage here — raise the <b>Length</b> in the brief and re-generate for more shots.";
+      return "Tell me the new premise — e.g. <b>change the script to a heist gone wrong</b> — and I'll rewrite and regenerate it.";
+    if (/\b(replace|regenerate|re-generate|redo|different clip)\b/.test(s))
+      return "Tell me what to put there — e.g. <b>replace clip 2 with a lightning storm</b>.";
+    if (/\b(longer|extend|add)\b/.test(s))
+      return "To add footage, say <b>add a clip of …</b>. To make the whole piece longer, raise <b>Length</b> and re-generate.";
 
     return "I didn't catch an edit there. Try <b>remove clip 2</b>, <b>trim to 12s</b>, <b>move clip 3 to start</b>, <b>reverse</b>, or <b>reset</b>.";
   }
-  function handleChat(text) {
+  async function handleChat(text) {
     const t = (text || "").trim(); if (!t) return;
     chatSay("user", esc(t));
-    setTimeout(() => chatSay("bot", runEditCommand(t)), 120);
+    try {
+      const reply = await runEditCommand(t);
+      if (reply) chatSay("bot", reply);
+    } catch (e) {
+      chatSay("bot", "Something went wrong: " + e.message);
+    }
   }
   function chatGreet() {
     if ($("#chatLog").children.length) return;

@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const ReelWeaverOrchestrator = require('./agents/ReelWeaverOrchestrator');
+const VideoGeneratorAgent = require('./agents/VideoGeneratorAgent');
 const config = require('./config/qwen');
 const { stitchClips } = require('./tools/video-stitch');
 
@@ -258,6 +259,34 @@ const server = http.createServer(async (req, res) => {
       stream.on('close', result.cleanup);
       stream.on('error', () => { try { res.destroy(); } catch (_) {} result.cleanup(); });
       return;
+    }
+
+    // Generate a SINGLE clip from a text prompt (used by the edit-assistant chat
+    // to add or replace clips). Real Wan 2.1 in live mode; placeholder in preview.
+    if (urlPath === '/api/clip' && method === 'POST') {
+      const body = await readBody(req);
+      const prompt = (body.prompt || '').toString().trim();
+      if (!prompt) return sendJson(res, 400, { ok: false, error: 'Describe the clip you want.' });
+      const mock = !config.apiKey || config.apiKey === 'your_qwen_cloud_api_key_here';
+      try {
+        const agent = new VideoGeneratorAgent();
+        const r = await agent.generateVideo(prompt, { duration: Number(body.duration) || 5, aspect_ratio: '9:16' });
+        return sendJson(res, 200, {
+          ok: true,
+          live: !mock,
+          clip: {
+            sceneNumber: Number(body.sceneNumber) || 0,
+            frameNumber: Number(body.frameNumber) || 0,
+            prompt,
+            duration: r.duration,
+            videoUrl: r.videoUrl,
+            status: r.status,
+            tokenCost: r.tokenCost || 0,
+          },
+        });
+      } catch (err) {
+        return sendJson(res, 500, { ok: false, error: err.message });
+      }
     }
 
     if (urlPath === '/api/generate' && method === 'POST') {
